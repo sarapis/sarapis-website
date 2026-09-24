@@ -10,6 +10,10 @@ next-env.d.ts
 # Payload default media upload directory
 public/media/
 
+# Status records the app and backup job write beside the DB
+github-sync-status.json
+backup-status.json
+
 public/robots.txt
 public/sitemap*.xml
 

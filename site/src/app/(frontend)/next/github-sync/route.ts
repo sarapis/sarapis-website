@@ -33,12 +33,14 @@ async function run(req: Request): Promise<Response> {
     // A run that skipped data is a FAILURE, reported as one — it used to say
     // `success: true` with HTTP 200 however much it had skipped.
     const { ok, status } = syncOutcome(summary)
-    recordSyncRun({ ok, errors: summary.errors.length, warnings: summary.warnings.length })
+    if (!recordSyncRun({ ok, errors: summary.errors.length, warnings: summary.warnings.length }))
+      payload.logger.warn({ msg: 'github-sync: could not persist the run outcome; health resets on restart' })
     if (ok) payload.logger.info({ msg: 'github-sync complete', summary })
     else payload.logger.error({ msg: 'github-sync completed WITH ERRORS', summary })
     return Response.json({ success: ok, summary }, { status })
   } catch (e) {
-    recordSyncRun({ ok: false, errors: 1, warnings: 0 })
+    if (!recordSyncRun({ ok: false, errors: 1, warnings: 0 }))
+      payload.logger.warn({ msg: 'github-sync: could not persist the run outcome; health resets on restart' })
     payload.logger.error({ err: e, msg: 'github-sync failed' })
     return new Response(`github-sync failed: ${(e as Error).message}`, { status: 500 })
   } finally {
