@@ -41,6 +41,7 @@ migration/out/
 # Operational detail: hosts, deploy targets, credential locations, incident
 # history. Claude Code loads CLAUDE.local.md automatically after CLAUDE.md.
 CLAUDE.local.md
+CLAUDE.local.archive.md
 CONTINUE.md
 # Code reviews may describe unfixed vulnerabilities.
 REVIEW-*.md
