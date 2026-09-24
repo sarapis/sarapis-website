@@ -54,3 +54,7 @@ Sarapis Activity.html
 remote_site/
 # TypeScript incremental build cache.
 *.tsbuildinfo
+
+# Python bytecode (the backup tests generate it)
+__pycache__/
+*.pyc

@@ -125,13 +125,31 @@ Do **not** simply remove the noindex and leave it serving.
 
 ## 9. After launch
 - **Admin password:** the shipped `sarapis.db` seeds a throwaway dev login; on any deployment rotate it immediately (Log in → Users → strong password) and store it in a secrets manager — never in this repo.
-- **Backups** (cron): the whole site state is two volumes. Example daily backup:
+- **Backups**: `deploy/backup/sarapis-backup.py` (Python 3 standard library only), run nightly by
+  `deploy/backup/sarapis-backup.cron`. The site's state is the SQLite database plus the media directory,
+  and the script backs up both:
+  - **Consistent database snapshot** via SQLite's online-backup API. Never `cp` a live database: it can
+    capture a half-written transaction.
+  - **Integrity check** on the snapshot, which must also contain at least one user.
+  - **A restore test on the compressed artifact itself**: it's decompressed, integrity-checked, and its
+    row counts must match the snapshot.
+  - **A media archive**, whose file count is checked.
+  - **Retention** of the newest 14 of each.
+  - **An optional off-box copy** with `rclone` (`RCLONE_REMOTE`).
+
+  It writes `backup-status.json` beside the database, and the site serves it at **`/next/backup/health`**:
+  503 unless a backup succeeded in the last 26 h **and** reached an off-box copy. Point an uptime monitor
+  at it.
   ```bash
-  docker run --rm -v sarapis-site_sarapis_data:/d -v /opt/backups:/b alpine \
-    sh -c "cp /d/sarapis.db /b/sarapis-$(date +%F).db"
-  # media changes rarely; rsync sarapis-site_sarapis_media similarly or back up /var/lib/docker/volumes
+  install -d /opt/sarapis/bin /opt/sarapis/backups
+  install -m 755 deploy/backup/sarapis-backup.py /opt/sarapis/bin/
+  install -m 644 deploy/backup/sarapis-backup.cron /etc/cron.d/sarapis-backup
+  /usr/bin/python3 /opt/sarapis/bin/sarapis-backup.py      # run once now; exit 0 = backed up + restore-tested
   ```
-  (Volume names are prefixed with the compose project dir, e.g. `sarapis-site_sarapis_data` — confirm with `docker volume ls`.)
+  Tests: `python3 -m unittest discover -s deploy/backup`.
+  **Restore:** stop the container, then `gunzip -c sarapis-db-<stamp>.db.gz > /opt/sarapis/data/sarapis.db`,
+  `chown 1001:1001` it, and, as root, `tar -xzf media-<stamp>.tar.gz -C /opt/sarapis`. It unpacks as `media/`,
+  and root's tar restores the recorded owner, uid 1001 — the container's user. Start the container again.
 - **Cert renewal**: certbot installs a renew timer automatically; confirm with `systemctl list-timers | grep certbot`.
 
 ## Redeploying after code changes

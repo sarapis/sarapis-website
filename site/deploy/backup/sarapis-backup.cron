@@ -1,0 +1,12 @@
+# /etc/cron.d/sarapis-backup — nightly backup of a self-hosted Sarapis site.
+# Source: site/deploy/backup/ in the repository; install with the steps in site/DEPLOY.md.
+#
+# 04:15 UTC keeps clear of the hourly GitHub sync at :17. The job takes seconds.
+# The site serves its outcome at /next/backup/health; point an uptime monitor at it.
+#
+# Add RCLONE_REMOTE=<remote>:<bucket>/<path> once an off-box target is configured.
+# Until then the health check stays 503, by design: a same-disk backup doesn't
+# survive losing the disk.
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+15 4 * * * root DATA_DIR=/opt/sarapis/data MEDIA_DIR=/opt/sarapis/media BACKUP_DIR=/opt/sarapis/backups /usr/bin/python3 /opt/sarapis/bin/sarapis-backup.py >> /var/log/sarapis-backup.log 2>&1

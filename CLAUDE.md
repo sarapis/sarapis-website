@@ -94,6 +94,14 @@ on update; editorial fields (`published`, `pinned`, `project`, `summary`, …) a
 - The route has an in-process mutex (409 "Sync already running"), and a client timeout does not
   abort the server handler — for a long backfill, trigger once and poll.
 
+## Backups
+
+`site/deploy/backup/sarapis-backup.py`, nightly via `sarapis-backup.cron`. It takes a consistent
+SQLite snapshot (never `cp` a live DB), restore-tests the compressed artifact, archives the media,
+and optionally copies both off-box with rclone. Its outcome is served at **`/next/backup/health`**,
+which is 503 unless a backup succeeded in the last 26 h *and* left the machine. Install, restore and
+test steps are in `site/DEPLOY.md`. Tests: `python3 -m unittest discover -s site/deploy/backup`.
+
 ## Gotchas (all have bitten this project)
 
 - **Schema `push` is off in production** (`NODE_ENV=production`, and the standalone bundle has no
