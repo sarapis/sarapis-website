@@ -35,6 +35,7 @@ export const Card: React.FC<{
         'border border-border rounded-lg overflow-hidden bg-card hover:cursor-pointer hover:border-primary/50 transition-colors',
         className,
       )}
+      // eslint-disable-next-line react-hooks/refs -- passes the ref object through; nothing reads .current during render
       ref={card.ref}
     >
       <div className="relative w-full aspect-[16/10] overflow-hidden bg-accent">
@@ -73,7 +74,7 @@ export const Card: React.FC<{
         {titleToUse && (
           <div className="prose">
             <h3>
-              <Link className="not-prose" href={href} ref={link.ref}>
+              <Link className="not-prose" href={href} ref={link.ref /* eslint-disable-line react-hooks/refs -- same: passed through, not read */}>
                 {titleToUse}
               </Link>
             </h3>

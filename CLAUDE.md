@@ -23,6 +23,8 @@ cp .env.example .env            # fill in PAYLOAD_SECRET etc.
 PORT=3009 pnpm exec next dev -p 3009
 pnpm exec vitest run            # int tests (run serially — see vitest.config.mts)
 pnpm exec tsc --noEmit
+pnpm lint                       # 0 errors expected; warnings are tolerated
+pnpm test:e2e                   # Playwright; starts `pnpm dev` on :3000
 ```
 
 Create a local admin: `ADMIN_EMAIL=… ADMIN_PASSWORD=… pnpm payload run scripts/create-admin.ts`

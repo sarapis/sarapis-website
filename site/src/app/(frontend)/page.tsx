@@ -8,6 +8,7 @@ import { ContactForm } from './ContactForm'
 import { ProjectsView } from './ProjectsView'
 import { SITE_NAV, LOGO_HREF } from './nav'
 import './home.css'
+import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
@@ -82,9 +83,9 @@ export default async function HomePage({
         <section id="posts" className="sds-container sds-band sds-band--first" style={{ scrollMarginTop: 90 }}>
           <div className="sds-catalog__head">
             <span>Recent Posts</span>
-            <a className="meta" href="/posts" style={{ color: 'var(--sds-primary)', textDecoration: 'none' }}>
+            <Link className="meta" href="/posts" style={{ color: 'var(--sds-primary)', textDecoration: 'none' }}>
               All posts →
-            </a>
+            </Link>
           </div>
           <div className="sds-grid sds-grid-3" style={{ marginTop: 22 }}>
             {recent.map((p) => {
@@ -120,9 +121,9 @@ export default async function HomePage({
         perProjectEvents={1}
         heading="Active Projects"
         metaSlot={
-          <a className="sds-seclead__meta" href="/projects" style={{ color: 'var(--sds-primary)', textDecoration: 'none' }}>
+          <Link className="sds-seclead__meta" href="/projects" style={{ color: 'var(--sds-primary)', textDecoration: 'none' }}>
             All projects →
-          </a>
+          </Link>
         }
       />
 
@@ -131,9 +132,9 @@ export default async function HomePage({
         <section id="services" className="sds-container sds-band">
           <div className="sds-seclead">
             <h2 className="sds-seclead__title">Services</h2>
-            <a className="sds-seclead__meta" href="/services" style={{ color: 'var(--sds-primary)', textDecoration: 'none' }}>
+            <Link className="sds-seclead__meta" href="/services" style={{ color: 'var(--sds-primary)', textDecoration: 'none' }}>
               All services →
-            </a>
+            </Link>
           </div>
           <div>
             {services.map((s, i) => (
@@ -171,9 +172,9 @@ export default async function HomePage({
         <section id="about" className="sds-container sds-band">
           <div className="sds-seclead">
             <h2 className="sds-seclead__title">About</h2>
-            <a className="sds-seclead__meta" href="/about" style={{ color: 'var(--sds-primary)', textDecoration: 'none' }}>
+            <Link className="sds-seclead__meta" href="/about" style={{ color: 'var(--sds-primary)', textDecoration: 'none' }}>
               Full story &amp; board →
-            </a>
+            </Link>
           </div>
           <div className="sds-about">
             <div>

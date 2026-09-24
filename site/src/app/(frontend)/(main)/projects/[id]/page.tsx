@@ -107,7 +107,8 @@ export default async function ProjectPage({
     return `/projects/${pid}${s ? `?${s}` : ''}`
   }
 
-  const Pager = ({ label, total, per, cur, param }: { label: string; total: number; per: number; cur: number; param: string }) => {
+  // A plain function, not a component: a component defined inside render is a new type every render.
+  const pager = ({ label, total, per, cur, param }: { label: string; total: number; per: number; cur: number; param: string }) => {
     if (total <= per) return null
     const pages = Math.max(1, Math.ceil(total / per))
     const c = Math.min(cur, pages)
@@ -275,7 +276,7 @@ export default async function ProjectPage({
           ) : (
             <div className="sds-empty" style={{ margin: 14, border: 'none', background: 'transparent' }}>No activity synced for this project yet.</div>
           )}
-          <Pager label="events" total={actRes.totalDocs} per={ACT_PER} cur={ap} param="ap" />
+          {pager({ label: 'events', total: actRes.totalDocs, per: ACT_PER, cur: ap, param: 'ap' })}
         </div>
 
         {/* Knowledge + Repositories */}
@@ -297,7 +298,7 @@ export default async function ProjectPage({
             ) : (
               <div className="sds-empty" style={{ margin: 14, border: 'none', background: 'transparent' }}>No knowledge items yet.</div>
             )}
-            <Pager label="items" total={knowRes.totalDocs} per={KNOW_PER} cur={kp} param="kp" />
+            {pager({ label: 'items', total: knowRes.totalDocs, per: KNOW_PER, cur: kp, param: 'kp' })}
           </div>
 
           <div className="sds-panel">
@@ -312,7 +313,7 @@ export default async function ProjectPage({
             ) : (
               <div className="sds-empty" style={{ margin: 14, border: 'none', background: 'transparent' }}>No repositories linked yet.</div>
             )}
-            <Pager label="repos" total={repoRes.totalDocs} per={REPO_PER} cur={rp} param="rp" />
+            {pager({ label: 'repos', total: repoRes.totalDocs, per: REPO_PER, cur: rp, param: 'rp' })}
           </div>
         </div>
       </section>

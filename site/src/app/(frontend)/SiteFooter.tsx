@@ -1,4 +1,5 @@
 import React from 'react'
+import Link from 'next/link'
 
 /**
  * Shared colophon footer (sds design) — used by the single-page home and by every
@@ -25,7 +26,7 @@ export function SiteFooter({ explore }: { explore: { label: string; href: string
             {explore.map((n) => (
               <a key={n.label} className="sds-footer__link" href={n.href}>{n.label}</a>
             ))}
-            <a className="sds-footer__link" href="/donate">Donate</a>
+            <Link className="sds-footer__link" href="/donate">Donate</Link>
           </nav>
         </div>
         <div className="sds-footer__note sds-footer__note--divider" style={{ paddingBlock: 'var(--sds-space-3)' }}>
