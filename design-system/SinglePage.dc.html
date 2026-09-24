@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SinglePageScreen — annotated spec</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Marcellus&family=Space+Mono:wght@400;700&display=swap');
+:root{
+  --bg:#faf6ee; --fg:oklch(24% 0.03 40deg); --card:#fffdf8; --muted:oklch(44% 0.028 45deg);
+  --border:oklch(90% 0.018 55deg); --primary:#782a39; --gold:#ffbb48; --accent:#f2e6e0;
+  --serif:'Fraunces',Georgia,serif; --mono:'Space Mono',ui-monospace,monospace;
+  --sans:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{--bg:oklch(17% 0.014 40deg);--fg:oklch(95% 0.012 70deg);--card:oklch(21% 0.014 40deg);--muted:oklch(72% 0.02 60deg);--border:oklch(28% 0.015 45deg);--primary:#c25c6e;--accent:oklch(30% 0.04 40deg);}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.6;}
+.wrap{max-width:62rem;margin:0 auto;padding:clamp(1.5rem,1rem+3vw,4rem) clamp(1rem,.5rem+2vw,2rem);}
+.doc-eyebrow{font-family:var(--mono);font-size:.72rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--primary);display:inline-flex;align-items:center;gap:.55rem;margin:0;}
+.doc-eyebrow::before{content:"";width:18px;height:3px;background:var(--gold);}
+h1{font-family:var(--serif);font-weight:500;letter-spacing:-.01em;font-size:clamp(2rem,1.25rem+3vw,3rem);line-height:1.05;margin:.6rem 0 0;}
+h2{font-family:var(--serif);font-weight:500;font-size:1.6rem;margin:3rem 0 .3rem;padding-top:1.5rem;border-top:1px solid var(--border);}
+h2:first-of-type{border-top:none;padding-top:0;}
+.lead{max-width:46rem;font-size:1.0625rem;color:var(--muted);margin:.9rem 0 0;}
+p{max-width:46rem;}
+code{font-family:var(--mono);font-size:.85em;background:color-mix(in oklch,var(--accent) 55%,transparent);padding:.1em .4em;border-radius:5px;color:var(--primary);white-space:nowrap;}
+ul{max-width:46rem;padding-left:1.1rem;} li{margin:.35rem 0;}
+.muted{color:var(--muted);}
+
+.anat{display:flex;flex-direction:column;gap:6px;border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--card);margin-top:1rem;}
+.anat .blk{border:1px dashed var(--border);border-radius:8px;padding:9px 13px;font-family:var(--mono);font-size:11px;letter-spacing:.03em;color:var(--muted);}
+.anat .blk b{color:var(--fg);font-weight:700;}
+.anat .blk .tag{color:var(--primary);}
+.anat .blk--chrome{border-left:3px solid var(--gold);}
+.anat .cols{display:grid;grid-template-columns:2fr 1fr;gap:6px;}
+
+.notes{display:grid;gap:14px;margin-top:1rem;}
+.note-card{border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:10px;background:var(--card);padding:16px 18px;}
+.note-card h4{margin:0 0 .4rem;font-family:var(--serif);font-weight:500;font-size:1.15rem;}
+.note-card p{margin:.3rem 0 0;font-size:.95rem;}
+.spec{font-family:var(--mono);font-size:11px;letter-spacing:.03em;color:var(--muted);margin-top:.7rem;display:flex;flex-wrap:wrap;gap:6px 14px;}
+.spec b{color:var(--fg);}
+.legend{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:1rem;font-family:var(--mono);font-size:12px;}
+.legend .g{font-size:15px;margin-right:6px;}
+.g--human{color:var(--primary)} .g--hybrid{color:#9a6a16} .g--ai{color:var(--muted)}
+table.tbl{width:100%;border-collapse:collapse;margin-top:1rem;font-size:13.5px;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.tbl th{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 14px;background:color-mix(in oklch,var(--accent) 50%,transparent);border-bottom:1px solid var(--border);}
+.tbl td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl td:first-child{font-family:var(--mono);color:var(--primary);white-space:nowrap;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<p class="doc-eyebrow">Sarapis Design System · v0.2 Tibetan · annotated spec</p>
+<h1>SinglePageScreen</h1>
+<p class="lead">The whole organisation on one scrolling page with a sticky jump-nav. It wraps the
+Activity page's data-dense "in the open" dashboard in the home hero and an editorial section
+rhythm. Composition-only: it reuses the v0.3 dashboard kit and the DS <code>Card</code>,
+<code>Callout</code>, <code>Button</code>, <code>Logo</code> and <code>Footer</code>; the jump-nav
+replaces the standard <code>Header</code>. Recreated from <code>handoff/6</code> ("Single Page").</p>
+
+<h2>Page anatomy</h2>
+<p>Nine bands inside <code>.sds-container</code>, in this order. Each jump target carries
+<code>scroll-margin-top:74px</code> so the sticky nav never covers a section top.</p>
+<div class="anat">
+  <div class="blk blk--chrome"><b>Sticky jump nav</b> <span class="tag">.sds-spnav</span> — Logo + 6 anchor links + Donate. Active link underlines.</div>
+  <div class="blk"><b>1 · Hero</b> <span class="tag">.sds-onehero</span> — eyebrow · serif H1 (55px) · lead + two Buttons. 1.5fr / 1fr.</div>
+  <div class="blk"><b>2 · Recent News</b> <span class="tag">.sds-catalog__head + Card grid</span> — rule head ("All perspectives →") over 3 cards.</div>
+  <div class="blk"><b>3 · Activities</b> <span class="tag">.sds-summary · chips · .sds-timeline-grid</span> — stat strip · project filter · timeline + pinned rail · pager.</div>
+  <div class="blk"><b>4 · Projects</b> <span class="tag">.sds-dtable</span> — status chips + sortable table (repo · commits/30d · last · status).</div>
+  <div class="blk"><b>5 · Perspectives</b> <span class="tag">.sds-feed / .sds-fcard</span> — 3 essay/press cards.</div>
+  <div class="blk"><b>6 · Services</b> <span class="tag">.sds-catalog + .sds-feed</span> — 3 numbered catalog rows + 3 example-work cards.</div>
+  <div class="blk"><b>7 · About</b> <span class="tag">.sds-about + .sds-about-facts</span> — serif lede + body / facts card. 1.4fr / 1fr.</div>
+  <div class="blk"><b>8 · Let’s talk</b> <span class="tag">Callout (maroon)</span> — the one dark moment; saffron Button.</div>
+  <div class="blk blk--chrome"><b>Footer</b> <span class="tag">DS Footer</span></div>
+</div>
+
+<h2>Section decisions</h2>
+<div class="notes">
+  <div class="note-card">
+    <h4>Sticky jump nav — chrome, not the Header</h4>
+    <p>The one-pager needs in-page navigation, so it swaps the standard <code>Header</code> for a
+    sticky bar that mirrors the same colophon treatment (cream <code>#f1e7dd</code>, 3px saffron
+    keyline). Links are Space Mono 12px/700/.11em uppercase; the active one turns maroon with a 2px
+    underline that scales in. Navigation is <b>anchor links only</b> — CSS
+    <code>scroll-behavior:smooth</code> (scoped via <code>html:has(.sds-single)</code>) does the
+    scrolling; no client JS. Scroll-spy (auto-highlighting the current section) is the one behaviour
+    that needs JS in production — an <code>IntersectionObserver</code> toggling <code>.is-active</code>.</p>
+    <div class="spec"><span><b>sticky</b> top:0, z:50</span><span><b>height</b> 74px = jump offset</span><span><b>pad-block</b> 15px</span><span><b>link gap</b> 26px</span></div>
+  </div>
+  <div class="note-card">
+    <h4>Hero &amp; Recent News</h4>
+    <p>A statement split: serif H1 (clamp → 55px, max 16ch) left, lead + primary/outline Buttons
+    right, aligned to the baseline (<code>align-items:end</code>). Recent News reuses the
+    <code>.sds-catalog__head</code> rule (mono kicker + "All perspectives →" jump to
+    <code>#perspectives</code>) above a <code>.sds-grid-3</code> of DS <code>Card</code>s with the
+    mono dateline ("FEB 2026 · Gotham Gazette").</p>
+    <div class="spec"><span><b>hero grid</b> 1.5fr / 1fr, gap 56px</span><span><b>pad-block</b> 66px 34px</span><span><b>cards</b> grid-3, gap 24px</span></div>
+  </div>
+  <div class="note-card">
+    <h4>Activities — the dashboard core (reused wholesale)</h4>
+    <p>Identical register to the Activity page. A <code>.sds-summary</code> strip (Commits · Active
+    repos +1 · Artifacts · News&amp;posts · a green-pulse "Synced" note), a project
+    <code>.sds-chip</code> filter toolbar, then the <code>.sds-timeline-grid</code> (2fr/1fr):
+    a merged timeline of events / artifacts / posts on the left, a ★ Pinned rail on the right.
+    Rows carry the authorship glyph and diffstat; a <code>.sds-tlpager</code> renders only when
+    &gt;10 items. Filter/sort/pager states are presentational (one active state) — the real page
+    drives them from URL params, matching the server-rendered <code>/activity</code>.</p>
+    <div class="spec"><span><b>grid</b> 2fr / 1fr, gap 20px</span><span><b>row</b> .sds-trow 56/16/1fr</span><span><b>dots</b> code·repo·release·artifact·post</span></div>
+  </div>
+  <div class="note-card">
+    <h4>Projects · Perspectives · Services · About</h4>
+    <p>Projects is one <code>.sds-dtable</code> with sortable headers (▾/▴) and status
+    <code>.sds-badge</code>s (active green-dot · exploring maroon · new saffron). Perspectives and
+    Services' example-work both reuse <code>.sds-feed</code> / <code>.sds-fcard</code>; Services'
+    offerings reuse the numbered <code>.sds-catalog</code> rows with the saffron hover bar. About is
+    a 1.4fr/1fr split — serif lede + body paragraphs beside a bordered <code>.sds-about-facts</code>
+    card (mono key / serif value rows).</p>
+    <div class="spec"><span><b>about</b> 1.4fr / 1fr, gap 56px</span><span><b>lede</b> 26px serif</span><span><b>fact</b> mono key + serif value</span></div>
+  </div>
+  <div class="note-card">
+    <h4>Let’s talk — the single dark moment</h4>
+    <p>The DS <code>Callout</code> maroon band closes the page. The button is overridden to saffron
+    by scoping <code>--sds-primary: var(--sds-gold)</code> / <code>--sds-primary-foreground:
+    var(--sds-ink)</code> on a wrapper around the Button — the brand's "one deliberate dark moment
+    per page" rule. Everything above stays on warm cream.</p>
+  </div>
+</div>
+
+<h2>Authorship glyphs</h2>
+<p>Display-only marks on timeline events (shared with ProjectScreen).</p>
+<div class="legend">
+  <span><span class="g g--human">●</span> Human — <code>.sds-glyph--human</code></span>
+  <span><span class="g g--hybrid">◐</span> Human + AI — <code>.sds-glyph--hybrid</code></span>
+  <span><span class="g g--ai">◑</span> AI — <code>.sds-glyph--ai</code></span>
+</div>
+
+<h2>Responsive behavior (≤820px)</h2>
+<ul>
+  <li>Hero (<code>.sds-onehero</code>) and About (<code>.sds-about</code>) collapse to one column; the
+  <code>.sds-timeline-grid</code> and <code>.sds-feed</code> collapse at their existing 720px break.</li>
+  <li>The 6-item jump nav becomes a single <b>horizontally scrollable row</b>
+  (<code>overflow-x:auto</code>, hidden scrollbar) instead of overflowing the page — a JS-free stand-in
+  for a mobile menu. Verified: no page-level horizontal scroll at 375px.</li>
+  <li>The Projects table sits in a <code>.sds-tablewrap</code> (<code>overflow-x:auto</code>) so the
+  wide 4-column grid scrolls inside its own container, never the page.</li>
+  <li>Server-rendered, links only. (Requires the host's <code>box-sizing:border-box</code> reset —
+  present in the site and the Claude Design canvas — which the DS stylesheet does not itself define.)</li>
+</ul>
+
+<h2>New CSS (additions only)</h2>
+<ul>
+  <li><code>.sds-spnav</code> / <code>__bar</code> / <code>__nav</code> / <code>__link</code>(<code>.is-active</code>) — the sticky jump nav + smooth-scroll/offset rules.</li>
+  <li><code>.sds-onehero</code>(<code>__title</code>/<code>__lead</code>/<code>__actions</code>) — the two-column hero.</li>
+  <li><code>.sds-band</code> / <code>.sds-seclead</code>(<code>__title</code>/<code>__meta</code>) — one-page section rhythm + rule headers.</li>
+  <li><code>.sds-panel__head</code>, <code>.sds-tdot--post</code>, <code>.sds-pulse</code> — timeline/pinned panel headers, the post dot, the synced pulse.</li>
+  <li><code>.sds-tlpager</code> / <code>.sds-tlpg</code> — the compact timeline pager; <code>.sds-th-sort</code> — sortable table headers.</li>
+  <li><code>.sds-about</code> / <code>.sds-about-facts</code> / <code>.sds-fact</code> — the About split + facts card.</li>
+  <li><code>.sds-tablewrap</code> + the ≤820px block — responsive containment.</li>
+</ul>
+
+<h2>Reused, unchanged</h2>
+<p><code>Card</code> · <code>Callout</code> · <code>Button</code> · <code>Logo</code> · <code>Footer</code> ·
+<code>.sds-container</code> / <code>.sds-grid-3</code> · <code>.sds-eyebrow</code> · <code>.sds-catalog</code> /
+<code>.sds-catalog__head</code> · <code>.sds-summary</code> · <code>.sds-chip</code> · <code>.sds-timeline-grid</code> /
+<code>.sds-log</code> / <code>.sds-trow</code> / <code>.sds-tdot</code> · <code>.sds-ftype</code> · <code>.sds-glyph</code> ·
+<code>.sds-diff</code> · <code>.sds-prow</code> / <code>.sds-ptag</code> · <code>.sds-dtable</code> · <code>.sds-badge</code> ·
+<code>.sds-feed</code> / <code>.sds-fcard</code>.</p>
+
+<h2>Production mapping (per the handoff)</h2>
+<table class="tbl">
+  <thead><tr><th>Prototype state</th><th>Production</th></tr></thead>
+  <tbody>
+    <tr><td>Scroll-spy active link</td><td>client <code>IntersectionObserver</code> → <code>.is-active</code> (only real client JS needed)</td></tr>
+    <tr><td>Project filter chips</td><td><code>/?project=…</code> URL param (as <code>/activity</code> does), or client <code>useState</code></td></tr>
+    <tr><td>Projects sort / status</td><td>sort + status URL params; server re-orders rows</td></tr>
+    <tr><td>Timeline pager (&gt;10)</td><td><code>?p=</code> param, DB-paginated — never a silent fetch cap</td></tr>
+    <tr><td>Feed / table data</td><td>Payload collections + GitHub sync (EVENTS, ARTIFACTS, POSTS, PROJECTS)</td></tr>
+  </tbody>
+</table>
+
+<p class="muted" style="margin-top:2.5rem;font-family:var(--mono);font-size:11px;letter-spacing:.05em;">
+Composition: <code>src/screens/SinglePageScreen.tsx</code>. Source of record: <code>handoff/6/Single Page.dc.html</code>.</p>
+
+</div>
+</body>
+</html>

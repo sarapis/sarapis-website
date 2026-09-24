@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sarapis-3009",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-lc",
+        "cd site && export PATH=\"$HOME/.npm-global/bin:$PATH\" && PORT=3009 pnpm exec next dev -p 3009"
+      ],
+      "port": 3009
+    }
+  ]
+}

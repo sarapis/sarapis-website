@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ProjectScreen — annotated spec</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Marcellus&family=Space+Mono:wght@400;700&display=swap');
+
+:root{
+  --bg:#faf6ee; --fg:oklch(24% 0.03 40deg); --card:#fffdf8; --muted:oklch(44% 0.028 45deg);
+  --border:oklch(90% 0.018 55deg); --primary:#782a39; --gold:#ffbb48; --accent:#f2e6e0;
+  --serif:'Fraunces',Georgia,serif; --mono:'Space Mono',ui-monospace,monospace;
+  --logo:'Marcellus',Georgia,serif; --sans:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:oklch(17% 0.014 40deg); --fg:oklch(95% 0.012 70deg); --card:oklch(21% 0.014 40deg);
+    --muted:oklch(72% 0.02 60deg); --border:oklch(28% 0.015 45deg); --primary:#c25c6e; --accent:oklch(30% 0.04 40deg); }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.6;}
+.wrap{max-width:60rem;margin:0 auto;padding:clamp(1.5rem,1rem+3vw,4rem) clamp(1rem,.5rem+2vw,2rem);}
+.doc-eyebrow{font-family:var(--mono);font-size:.72rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--primary);display:inline-flex;align-items:center;gap:.55rem;margin:0;}
+.doc-eyebrow::before{content:"";width:18px;height:3px;background:var(--gold);}
+h1{font-family:var(--serif);font-weight:500;letter-spacing:-.01em;font-size:clamp(2rem,1.25rem+3vw,3rem);line-height:1.05;margin:.6rem 0 0;}
+h2{font-family:var(--serif);font-weight:500;font-size:1.6rem;margin:3rem 0 .3rem;padding-top:1.5rem;border-top:1px solid var(--border);}
+h2:first-of-type{border-top:none;padding-top:0;}
+h3{font-family:var(--mono);font-size:.75rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--primary);margin:1.8rem 0 .5rem;}
+.lead{max-width:44rem;font-size:1.0625rem;color:var(--muted);margin:.9rem 0 0;}
+p{max-width:44rem;}
+code{font-family:var(--mono);font-size:.85em;background:color-mix(in oklch,var(--accent) 55%,transparent);padding:.1em .4em;border-radius:5px;color:var(--primary);}
+[data-theme] code, code{white-space:nowrap;}
+ul{max-width:44rem;padding-left:1.1rem;}
+li{margin:.35rem 0;}
+.mono{font-family:var(--mono);}
+.muted{color:var(--muted);}
+
+/* anatomy diagram */
+.anat{display:flex;flex-direction:column;gap:6px;border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--card);margin-top:1rem;}
+.anat .blk{border:1px dashed var(--border);border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--muted);position:relative;}
+.anat .blk b{color:var(--fg);font-weight:700;}
+.anat .blk .tag{color:var(--primary);}
+.anat .cols{display:grid;grid-template-columns:2fr 1fr;gap:6px;}
+.anat .blk--head{border-left:3px solid var(--gold);}
+
+/* annotation cards */
+.notes{display:grid;gap:14px;margin-top:1rem;}
+.note-card{border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:10px;background:var(--card);padding:16px 18px;}
+.note-card h4{margin:0 0 .4rem;font-family:var(--serif);font-weight:500;font-size:1.15rem;}
+.note-card p{margin:.3rem 0 0;font-size:.95rem;}
+.spec{font-family:var(--mono);font-size:11px;letter-spacing:.03em;color:var(--muted);margin-top:.7rem;display:flex;flex-wrap:wrap;gap:6px 14px;}
+.spec b{color:var(--fg);}
+
+/* legend + swatches */
+.legend{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:1rem;font-family:var(--mono);font-size:12px;}
+.legend .g{font-size:15px;margin-right:6px;}
+.g--human{color:var(--primary)} .g--hybrid{color:#9a6a16} .g--ai{color:var(--muted)}
+
+/* empty-state demo */
+.demo{border:1px dashed var(--border);border-radius:11px;background:color-mix(in oklch,var(--accent) 30%,transparent);padding:22px 20px;font-family:var(--mono);font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:5px;margin-top:.8rem;max-width:32rem;}
+.demo .hint{font-family:var(--sans);font-size:13px;opacity:.85;}
+
+table.tbl{width:100%;border-collapse:collapse;margin-top:1rem;font-size:13.5px;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.tbl th{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 14px;background:color-mix(in oklch,var(--accent) 50%,transparent);border-bottom:1px solid var(--border);}
+.tbl td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl td:first-child{font-family:var(--mono);color:var(--primary);white-space:nowrap;}
+.tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:9999px;border:1px solid var(--border);color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<p class="doc-eyebrow">Sarapis Design System · v0.2 Tibetan · annotated spec</p>
+<h1>ProjectScreen</h1>
+<p class="lead">The project profile page — route <code>/projects/[id]</code>. The detail view
+behind the Projects table and the project filter chips on the Activity page. It is deliberately
+a <em>zoomed-in sibling</em> of <code>ActivityScreen</code>: same summary strip, same
+merged-timeline + rail grid, same dense rows, badges, chips and data table — scoped to one
+project. No new design language, only project-scoped composition and five small new patterns.</p>
+
+<h2>Page anatomy</h2>
+<p>Top → bottom. One serif "spine" (the timeline) carries the narrative; everything else is
+compact reference. This is the answer to "four data types without four stacked tables": events
+are the spine, repos are a single short table, and knowledge + tasks are lightweight rail lists.</p>
+<div class="anat">
+  <div class="blk blk--head"><b>Header</b> — shared chrome (Logo · nav · Donate). <span class="tag">reused</span></div>
+  <div class="blk"><b>Identity block</b> <span class="tag">.sds-phead</span> — breadcrumb up the tree · name + status badge + focus tag · summary · child/sibling chip rail</div>
+  <div class="blk"><b>Stats strip</b> <span class="tag">.sds-summary (reused)</span> — repos · events/90d · last active · "synced" note</div>
+  <div class="blk"><b>Repositories</b> <span class="tag">.sds-dtable (reused)</span> — one compact table, fullName · last-pushed · ↗</div>
+  <div class="cols">
+    <div class="blk"><b>Activity timeline</b> <span class="tag">.sds-log / .sds-trow (reused)</span> — project-scoped events: date · dot · repo · title · glyph · actor · diff · curator note · pin</div>
+    <div class="blk">Context rail<br><b>Knowledge</b> + <b>Tasks</b> <span class="tag">.sds-prow (reused)</span></div>
+  </div>
+  <div class="blk">Back to <b>/activity</b> link</div>
+  <div class="blk blk--head"><b>Footer</b> — shared colophon. <span class="tag">reused</span></div>
+</div>
+
+<h2>Section decisions</h2>
+<div class="notes">
+
+  <div class="note-card">
+    <h4>Identity block — the tree lives here</h4>
+    <p>The breadcrumb (<code>.sds-crumbs</code>, Space Mono 11px) walks <b>up</b>:
+    <span class="mono">Activity / Projects / WeGovNYC / Databook</span> — the parent is a link, the
+    current project is <code>aria-current="page"</code>. The first crumb is the route back to the
+    Activity stream. Name (Fraunces, clamp 2→3rem), status <code>.sds-badge</code> and focus
+    <code>.sds-tag</code> sit on one baseline-aligned wrap row so they never collide on narrow widths.</p>
+    <p><b>Child-project navigation is the same chip rail.</b> On a leaf like Databook it renders
+    <em>siblings</em> ("Also under WeGovNYC"); on a parent (the WeGovNYC page) relabel it
+    "Child projects" and point it at the children — identical markup, one label swap.</p>
+    <div class="spec"><span><b>pad-block</b> clamp 2→3rem</span><span><b>row gap</b> 14px</span><span><b>summary max</b> 44rem</span><span><b>tree gap</b> 9px, label 10px mono</span></div>
+  </div>
+
+  <div class="note-card">
+    <h4>Stats strip — identical register to Activity</h4>
+    <p>Reuses <code>.sds-summary</code> verbatim so the two pages read as one system. Three
+    derived numbers (cheap to compute): <b>repo count</b>, <b>event count</b> (with a 90-day delta),
+    <b>last-active date</b>. The last cell is the right-aligned "↻ synced from GitHub" note, exactly
+    as on Activity. Fraunces numerals, Space Mono labels.</p>
+    <div class="spec"><span><b>cell pad</b> 13×22px</span><span><b>number</b> 23px serif</span><span><b>label</b> 9.5px mono / .09em</span><span><b>last cell</b> margin-left:auto</span></div>
+  </div>
+
+  <div class="note-card">
+    <h4>Repositories — the one table on the page</h4>
+    <p>Only 3 rows × 2 fields, so a full <code>.sds-dtable</code> is warranted and keeps repos
+    scannable and sortable without competing with the timeline. Repo names are the maroon mono
+    <code>.repo-nm</code>; a <code>primary</code> tag marks the lead repo; the trailing cell is the
+    <code>↗</code> link-out. Placed above the fold of the two-column grid because "repo count" is a
+    headline stat — the table is its expansion.</p>
+    <div class="spec"><span><b>row pad</b> 11×16px</span><span><b>divider</b> 1px</span><span><b>≤720px</b> hides "Last pushed" column (.sds-dtable--repos)</span></div>
+  </div>
+
+  <div class="note-card">
+    <h4>Activity timeline — the spine (2fr / 1fr)</h4>
+    <p>Reuses <code>.sds-timeline-grid</code> and <code>.sds-trow</code> from Activity, filtered to
+    this project. Each row: mono date · ringed <code>.sds-tdot</code> colored by kind
+    (code / repo / release) · maroon-mono repo · Fraunces title · then a meta line carrying the
+    <b>authorship glyph</b>, the <code>@actor</code>, and the diffstat or event kind. A curator note,
+    when present, drops below as a Fraunces-italic aside with a saffron left rule
+    (<code>.sds-note</code>). Pinned events get a gold <code>◆</code> (<code>.sds-pin</code>) — the
+    project-scoped equivalent of Activity's pinned rail.</p>
+    <div class="spec"><span><b>grid</b> 2fr / 1fr, gap 20px</span><span><b>row</b> 56 / 16 / 1fr, pad 12×16px</span><span><b>title</b> 14.5px</span><span><b>meta</b> 11px mono</span></div>
+  </div>
+
+  <div class="note-card">
+    <h4>Context rail — Knowledge, then Tasks</h4>
+    <p>Two stacked <code>.sds-log</code> modules with mono <code>.sds-dlist__head</code> headers,
+    built from <code>.sds-prow</code> rows — <em>lists, not tables</em>, so they stay quiet next to the
+    spine. Knowledge rows carry the <code>.MD</code>/<code>.HTML</code> stamp, a pin ◆ when pinned,
+    a mono dateline, and a one-line summary. Task rows carry a status <code>.sds-badge</code>. On the
+    reached/Done task the badge is the solid maroon <code>--reached</code> variant.</p>
+    <div class="spec"><span><b>module gap</b> 1.5rem</span><span><b>row</b> .sds-prow, pad 13×16px</span><span><b>header</b> 10px mono</span></div>
+  </div>
+
+</div>
+
+<h2>Authorship glyphs</h2>
+<p>Display-only marks on each event, sourced from a commit-trailer / frontmatter convention or a
+manual tag (a product decision, not a design one). Color follows the brand: maroon for human,
+saffron-ink for shared, muted for machine.</p>
+<div class="legend">
+  <span><span class="g g--human">●</span> Human — <code>.sds-glyph--human</code></span>
+  <span><span class="g g--hybrid">◐</span> Human + AI — <code>.sds-glyph--hybrid</code></span>
+  <span><span class="g g--ai">◑</span> AI — <code>.sds-glyph--ai</code></span>
+</div>
+
+<h2>Empty states</h2>
+<p>A freshly <b>declared</b> project may have no repos, no events, no knowledge, no tasks. Every
+list renders <code>.sds-empty</code> instead — a soft dashed panel with a mono headline and an
+optional plain-language hint — so the page degrades gracefully rather than showing an empty table
+frame. The stats strip still renders (0 / 0 / "—"), and the identity block always renders.</p>
+<div class="demo">No activity synced yet.<span class="hint">Commits, pull requests and releases will appear here once a repo is linked.</span></div>
+<div class="demo">No repositories linked yet.<span class="hint">Repos appear here once this project is connected to a GitHub repository.</span></div>
+
+<h2>Responsive behavior</h2>
+<ul>
+  <li><b>≤720px</b> — the <code>.sds-timeline-grid</code> collapses to a single column (rail modules
+  fall below the timeline), reusing the existing dashboard breakpoint. Verified: grid resolves to one <code>359px</code> track at 375px.</li>
+  <li><b>≤720px</b> — the Repositories table drops its "Last pushed" column
+  (<code>.sds-dtable--repos</code>), keeping repo name + link-out.</li>
+  <li>Identity <code>.sds-phead__row</code> and the tree chips wrap; the name clamps
+  2rem → 3rem. No horizontal scroll at 375px.</li>
+  <li>Server-rendered, links only — no client JS. Filtering/sorting is delegated to the Activity
+  page (<code>/activity?project=…</code>), which the "View in the activity stream ↗" link targets.</li>
+</ul>
+
+<h2>New CSS (additions only — nothing restated)</h2>
+<p>Appended to <code>src/styles.css</code> under a "Project profile page" banner. Everything else
+on the page is the existing v0.3 dashboard kit.</p>
+<ul>
+  <li><code>.sds-crumbs</code> — breadcrumb (mono, links, muted separators).</li>
+  <li><code>.sds-phead</code> / <code>__row</code> / <code>__name</code> / <code>__summary</code> /
+  <code>__tree</code> / <code>__tree-label</code> — the identity block.</li>
+  <li><code>.sds-glyph</code> + <code>--human</code>/<code>--hybrid</code>/<code>--ai</code> — authorship marks.</li>
+  <li><code>.sds-actor</code> (mono @handle) and <code>.sds-note</code> (Fraunces-italic curator aside, saffron rule).</li>
+  <li><code>.sds-pin</code> — the gold ◆ pin marker.</li>
+  <li><code>.sds-empty</code> + <code>.sds-empty__hint</code> — the declared-project empty state.</li>
+  <li>Responsive: <code>.sds-dtable--repos</code> column drop + <code>.sds-phead__row</code> gap tighten.</li>
+</ul>
+
+<h2>Reused, unchanged</h2>
+<p><code>Header</code> · <code>Footer</code> · <code>SectionHeading</code> · <code>.sds-summary</code> ·
+<code>.sds-timeline-grid</code> · <code>.sds-log</code> · <code>.sds-trow</code> / <code>.sds-tdot</code> ·
+<code>.sds-tlink</code> · <code>.sds-lrow__meta</code> / <code>.sds-diff</code> · <code>.sds-prow</code> /
+<code>.sds-ptag</code> · <code>.sds-dtable</code> · <code>.sds-badge</code> · <code>.sds-chip</code> ·
+<code>.sds-ftype</code> · <code>.sds-tag</code> · <code>.sds-ext</code>.</p>
+
+<h2>Data mapping (when wiring the real route)</h2>
+<table class="tbl">
+  <thead><tr><th>UI element</th><th>Source (Payload collections)</th></tr></thead>
+  <tbody>
+    <tr><td>Identity + tree</td><td><code>Projects</code>: name, status, focus, summary, self-ref <code>parent</code> / children</td></tr>
+    <tr><td>Stats: repos / events / last-active</td><td>derived counts over <code>Repos</code> + <code>ActivityEvents</code> for this project</td></tr>
+    <tr><td>Repositories table</td><td><code>Repos</code>: fullName, pushed_at (github-synced)</td></tr>
+    <tr><td>Timeline rows</td><td><code>ActivityEvents</code>: kind, title, date, repo, actor, glyph, editable curator <code>note</code> + <code>pinned</code></td></tr>
+    <tr><td>Knowledge rail</td><td><code>KnowledgeItems</code>: link vs artifact kind, title, date, summary, pinned</td></tr>
+    <tr><td>Tasks rail</td><td><code>Tasks</code>: title + status (Idea→Done)</td></tr>
+  </tbody>
+</table>
+
+<p class="muted" style="margin-top:2.5rem;font-family:var(--mono);font-size:11px;letter-spacing:.05em;">
+Sample project: Databook · child of WeGovNYC · Open Government · active. Composition:
+<code>src/screens/ProjectScreen.tsx</code>.</p>
+
+</div>
+</body>
+</html>

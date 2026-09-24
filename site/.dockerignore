@@ -1,0 +1,22 @@
+node_modules
+.next
+.git
+.gitignore
+*.log
+dev.log
+.env
+.env.*
+!.env.production.example
+# Media is large (74MB) and seeded into a volume on the server, not baked into the image
+public/media
+# Build scratch / local tooling
+.DS_Store
+README.md
+# One-off migration/admin scripts — not part of the app; they pull in untyped dev deps
+scripts
+# Deploy image tarballs — must NOT be baked into the image (they doubled its size each build)
+deploy/*.tar.gz
+# transient sqlite files
+*.db-wal
+*.db-shm
+*.bak-*

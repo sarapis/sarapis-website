@@ -1,0 +1,22 @@
+{
+  "pkg": "@sarapis/design-system",
+  "globalName": "SarapisDS",
+  "projectId": "574a02ab-a63b-4c45-bf26-edb6e37213e1",
+  "shape": "package",
+  "buildCmd": "npm run build",
+  "cssEntry": "dist/index.es.css",
+  "readmeHeader": ".design-sync/conventions.md",
+  "overrides": {
+    "HomeScreen": { "cardMode": "single", "primaryStory": "Page", "viewport": "1280x2200" },
+    "WorkAreaScreen": { "cardMode": "single", "primaryStory": "Page", "viewport": "1280x2000" },
+    "BlogIndexScreen": { "cardMode": "single", "primaryStory": "Page", "viewport": "1280x1700" },
+    "PostScreen": { "cardMode": "single", "primaryStory": "Page", "viewport": "1280x1700" },
+    "ActivityScreen": { "cardMode": "single", "primaryStory": "Page", "viewport": "1280x2400" },
+    "SinglePageScreen": { "cardMode": "single", "primaryStory": "Page", "viewport": "1280x2000" },
+    "ProjectScreen": { "cardMode": "single", "primaryStory": "Page", "viewport": "1280x1900" },
+    "Header": { "cardMode": "column" },
+    "Footer": { "cardMode": "column" },
+    "CatalogIndex": { "cardMode": "column" }
+  }
+}
+

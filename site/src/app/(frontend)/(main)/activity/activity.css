@@ -1,0 +1,180 @@
+/* Activity page styling — v0.2 dashboard patterns, scoped to .sds-activity so it
+   doesn't recolor the rest of the site (full v0.2 port-back is separate). */
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap');
+
+.sds-activity {
+  --sds-background: oklch(98.2% 0.009 70deg);
+  --sds-foreground: oklch(24% 0.03 40deg);
+  --sds-card: oklch(99.2% 0.006 70deg);
+  --sds-muted-foreground: oklch(44% 0.028 45deg);
+  --sds-border: oklch(90% 0.018 55deg);
+  --sds-primary: #782a39;
+  --sds-primary-foreground: #fbf4e6;
+  --sds-accent: #f2e6e0;
+  --sds-gold: #ffbb48;
+  --sds-ink: #2c1418;
+  --sds-font-serif: 'Fraunces', Georgia, serif;
+  --sds-font-sans: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --sds-font-mono: 'Space Mono', ui-monospace, Menlo, monospace;
+  --sds-space-1:.25rem; --sds-space-2:.5rem; --sds-space-3:.75rem;
+  --sds-space-4:1rem; --sds-space-6:1.5rem; --sds-space-8:2rem;
+  background: var(--sds-background);
+  color: var(--sds-foreground);
+  font-family: var(--sds-font-sans);
+}
+.sds-activity .sds-container { width:100%; max-width:72rem; margin:0 auto; padding-inline: clamp(1rem,.5rem + 2vw,2rem); }
+.sds-activity .sds-section { padding-block: clamp(2rem,1.5rem + 3vw,3.25rem); border-top:1px solid var(--sds-border); }
+.sds-activity .sds-section--hero { border-top:none; padding-top: clamp(2.5rem,1.5rem + 4vw,4rem); }
+.sds-activity .sds-eyebrow { font-family:var(--sds-font-mono); font-size:.7rem; text-transform:uppercase; letter-spacing:.1em; color:var(--sds-primary); margin:0 0 var(--sds-space-3); }
+.sds-activity .sds-hero__title { font-family:var(--sds-font-serif); font-weight:500; font-size: clamp(2rem,1rem + 4vw,3rem); line-height:1.08; letter-spacing:-0.01em; max-width:22ch; margin:0; }
+.sds-activity .sds-hero__lead { color:var(--sds-muted-foreground); margin-top: var(--sds-space-4); max-width:46ch; font-size:1.05rem; }
+.sds-activity .sds-h { font-family:var(--sds-font-serif); font-weight:500; font-size:1.4rem; margin:0; }
+.sds-activity .sds-sec-head { display:flex; align-items:baseline; justify-content:space-between; gap:1rem; margin-bottom: var(--sds-space-6); }
+.sds-activity .sds-sec-head .tag { font-family:var(--sds-font-mono); font-size:.7rem; text-transform:uppercase; letter-spacing:.08em; color:var(--sds-muted-foreground); }
+.sds-activity a { color: inherit; }
+/* ============================================================
+   Sarapis Design System — dashboard.css  (v0.3 "compact / data-dense")
+   Merge into src/styles.css. All NEW selectors — nothing replaced.
+   A compact register for activity, artifacts, and feeds. Lists & cards
+   over big numbers. Light cream surfaces only; saffron for state/hover.
+
+   Density contract:
+     ROW 36–40px · TITLE 13–16px · META 11px mono · DIVIDER 1px
+     GRID-GAP 14–16px · CARD-PAD 16px
+   Optional: scope under [data-density="compact"] if you want a mode
+   rather than always-on dashboard classes.
+   ============================================================ */
+
+/* ---- Summary strip — quiet page-top totals ----------------------------- */
+.sds-summary { display:flex; flex-wrap:wrap; border:1px solid var(--sds-border); border-radius:11px; background:var(--sds-card); overflow:hidden; }
+.sds-summary__cell { padding:13px 22px; border-right:1px solid var(--sds-border); }
+.sds-summary__cell:last-child { border-right:none; margin-left:auto; display:flex; align-items:center; }
+.sds-summary__n { font-family:var(--sds-font-serif); font-weight:500; font-size:23px; line-height:1; color:var(--sds-foreground); }
+.sds-summary__n .delta { font-family:var(--sds-font-mono); font-size:12px; color:#3d7a5a; margin-left:6px; }
+.sds-summary__l { font-family:var(--sds-font-mono); font-size:9.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--sds-muted-foreground); margin-top:6px; }
+
+/* ---- Segment toolbar --------------------------------------------------- */
+.sds-toolbar { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.sds-segment { display:inline-flex; border:1px solid var(--sds-border); border-radius:9999px; overflow:hidden; background:var(--sds-card); }
+.sds-segment a { font-family:var(--sds-font-mono); font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:8px 15px; color:var(--sds-muted-foreground); text-decoration:none; border-right:1px solid var(--sds-border); transition:background .12s,color .12s; }
+.sds-segment a:last-child { border-right:none; }
+.sds-segment a:hover { color:var(--sds-primary); }
+.sds-segment a[aria-current="true"], .sds-segment a.is-active { background:var(--sds-primary); color:var(--sds-primary-foreground); }
+
+/* ---- Dense list + artifact rows (the workhorse) ------------------------ */
+.sds-dlist { border:1px solid var(--sds-border); border-radius:11px; overflow:hidden; background:var(--sds-card); }
+.sds-dlist__head { display:grid; gap:16px; align-items:center; padding:10px 16px; background:color-mix(in oklch,var(--sds-accent) 50%,transparent); border-bottom:1px solid var(--sds-border); font-family:var(--sds-font-mono); font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--sds-muted-foreground); }
+.sds-arow { display:grid; grid-template-columns:96px 1fr 200px 26px; gap:16px; align-items:center; padding:11px 16px; border-bottom:1px solid var(--sds-border); text-decoration:none; color:inherit; position:relative; transition:background .12s; }
+.sds-arow:last-child { border-bottom:none; }
+.sds-arow::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--sds-gold); transform:scaleY(0); transform-origin:top; transition:transform .15s; }
+.sds-arow:hover { background:var(--sds-accent); }
+.sds-arow:hover::before { transform:scaleY(1); }
+.sds-arow:hover .sds-ext { color:var(--sds-primary); transform:translate(2px,-2px); }
+.sds-arow__title { font-family:var(--sds-font-serif); font-size:15.5px; line-height:1.3; color:var(--sds-foreground); }
+.sds-arow__meta { font-family:var(--sds-font-mono); font-size:11px; color:var(--sds-muted-foreground); display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.sds-ext { font-family:var(--sds-font-mono); font-size:14px; color:var(--sds-muted-foreground); transition:transform .15s,color .15s; text-align:center; }
+
+/* file-type stamp */
+.sds-ftype { font-family:var(--sds-font-mono); font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:4px 8px; border-radius:6px; text-align:center; }
+.sds-ftype--md   { color:#9a6a16; background:color-mix(in oklch,var(--sds-gold) 18%,transparent); border:1px solid color-mix(in oklch,var(--sds-gold) 42%,transparent); }
+.sds-ftype--html { color:var(--sds-primary); background:color-mix(in oklch,var(--sds-primary) 9%,transparent); border:1px solid color-mix(in oklch,var(--sds-primary) 28%,transparent); }
+.sds-ftype--doc  { color:var(--sds-muted-foreground); background:color-mix(in oklch,var(--sds-foreground) 6%,transparent); border:1px solid var(--sds-border); }
+
+/* ---- Activity log ------------------------------------------------------ */
+.sds-log { border:1px solid var(--sds-border); border-radius:11px; overflow:hidden; background:var(--sds-card); }
+.sds-lrow { display:grid; grid-template-columns:64px 22px 1fr auto; gap:14px; align-items:center; padding:10px 16px; border-bottom:1px solid var(--sds-border); }
+.sds-lrow:last-child { border-bottom:none; }
+.sds-lrow__time { font-family:var(--sds-font-mono); font-size:11px; color:var(--sds-muted-foreground); text-align:right; }
+.sds-lrow__glyph { font-family:var(--sds-font-mono); font-size:13px; font-weight:700; text-align:center; }
+.sds-lrow__glyph--code { color:var(--sds-primary); }
+.sds-lrow__glyph--repo { color:#9a6a16; }
+.sds-lrow__glyph--release { color:#3d7a5a; }
+.sds-lrow__title { font-size:13.5px; color:var(--sds-foreground); }
+.sds-lrow__title .repo { font-family:var(--sds-font-mono); font-weight:700; color:var(--sds-primary); }
+.sds-lrow__meta { font-family:var(--sds-font-mono); font-size:11px; color:var(--sds-muted-foreground); display:flex; gap:12px; align-items:center; }
+.sds-diff .add { color:#3d7a5a; font-weight:700; }
+.sds-diff .del { color:#9a4250; font-weight:700; }
+
+/* ---- Feed cards (news + blog) ------------------------------------------ */
+.sds-feed { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.sds-fcard { border:1px solid var(--sds-border); border-radius:11px; background:var(--sds-card); padding:16px; text-decoration:none; color:inherit; display:flex; flex-direction:column; gap:8px; transition:border-color .12s,transform .12s; }
+.sds-fcard:hover { border-color:var(--sds-primary); transform:translateY(-2px); }
+.sds-fcard__kicker { font-family:var(--sds-font-mono); font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--sds-primary); display:flex; align-items:center; gap:8px; }
+.sds-fcard__kicker .src { color:var(--sds-muted-foreground); }
+.sds-fcard__title { font-family:var(--sds-font-serif); font-size:16px; line-height:1.3; color:var(--sds-foreground); }
+.sds-fcard__date { font-family:var(--sds-font-mono); font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--sds-muted-foreground); margin-top:auto; }
+.sds-fcard--featured { border-color:color-mix(in oklch,var(--sds-gold) 55%,var(--sds-border)); background:color-mix(in oklch,var(--sds-gold) 6%,var(--sds-card)); }
+.sds-fcard--featured:hover { border-color:var(--sds-primary); }
+.sds-fcard__star { color:#9a6a16; }
+
+/* ---- Data table -------------------------------------------------------- */
+.sds-dtable { width:100%; border-collapse:collapse; border:1px solid var(--sds-border); border-radius:11px; overflow:hidden; font-size:13px; }
+.sds-dtable thead th { font-family:var(--sds-font-mono); font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--sds-muted-foreground); text-align:left; padding:11px 16px; background:color-mix(in oklch,var(--sds-accent) 50%,transparent); border-bottom:1px solid var(--sds-border); }
+.sds-dtable tbody td { padding:11px 16px; border-bottom:1px solid var(--sds-border); color:var(--sds-foreground); }
+.sds-dtable tbody tr:last-child td { border-bottom:none; }
+.sds-dtable tbody tr:hover { background:var(--sds-accent); }
+.sds-dtable .repo-nm { font-family:var(--sds-font-mono); font-weight:700; color:var(--sds-primary); }
+.sds-dtable .num, .sds-dtable th.num { text-align:right; font-family:var(--sds-font-mono); font-variant-numeric:tabular-nums; }
+
+/* ---- Status badges ----------------------------------------------------- */
+.sds-badge { font-family:var(--sds-font-mono); font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; padding:4px 11px; border-radius:9999px; display:inline-flex; align-items:center; gap:6px; }
+.sds-badge--declared { border:1px solid var(--sds-primary); color:var(--sds-primary); }
+.sds-badge--active   { border:1px solid #3d7a5a; color:#3d7a5a; }
+.sds-badge--active .dot { width:7px; height:7px; border-radius:50%; background:#3d7a5a; }
+.sds-badge--progress { background:var(--sds-gold); color:var(--sds-ink); }
+.sds-badge--reached  { background:var(--sds-primary); color:var(--sds-primary-foreground); }
+
+/* ---- Micro-charts ------------------------------------------------------ */
+.sds-spark { display:flex; align-items:flex-end; gap:3px; height:32px; }
+.sds-spark i { width:6px; background:color-mix(in oklch,var(--sds-primary) 32%,transparent); border-radius:1px; }
+.sds-chart-slot { border:1px dashed var(--sds-border); border-radius:11px; height:150px; display:flex; align-items:center; justify-content:center; background:repeating-linear-gradient(45deg,transparent,transparent 9px,color-mix(in oklch,var(--sds-border) 30%,transparent) 9px,color-mix(in oklch,var(--sds-border) 30%,transparent) 10px); }
+
+/* ---- Merged timeline (Activity page) ----------------------------------
+   One chronological stream mixing repo events and knowledge artifacts.
+   Repo items get a ringed dot; knowledge items a square gold dot + ext stamp.
+   Live on the Activity page in a 2fr / 1fr grid with the pinned rail. */
+.sds-timeline-grid { display:grid; grid-template-columns:2fr 1fr; gap:20px; align-items:start; }
+.sds-trow { display:grid; grid-template-columns:56px 16px 1fr; gap:13px; align-items:start; padding:12px 16px; border-bottom:1px solid var(--sds-border); }
+.sds-trow:last-child { border-bottom:none; }
+.sds-trow__date { font-family:var(--sds-font-mono); font-size:10.5px; color:var(--sds-muted-foreground); text-align:right; padding-top:3px; }
+.sds-tdot { width:12px; height:12px; border-radius:50%; border:2px solid var(--sds-border); background:var(--sds-card); margin-top:3px; }
+.sds-tdot--code { border-color:var(--sds-primary); }
+.sds-tdot--repo { border-color:#9a6a16; }
+.sds-tdot--release { border-color:#3d7a5a; }
+.sds-tdot--artifact { border-radius:3px; border-color:#9a6a16; background:color-mix(in oklch,var(--sds-gold) 32%,transparent); }
+.sds-tlink { display:inline-flex; align-items:baseline; gap:7px; text-decoration:none; color:inherit; }
+.sds-tlink:hover .sds-ext { color:var(--sds-primary); }
+
+/* ---- Pinned rail ------------------------------------------------------- */
+.sds-prow { display:flex; flex-direction:column; gap:5px; padding:13px 16px; border-bottom:1px solid var(--sds-border); text-decoration:none; color:inherit; transition:background .12s; }
+.sds-prow:last-child { border-bottom:none; }
+.sds-prow:hover { background:var(--sds-accent); }
+.sds-ptag { align-self:flex-start; font-family:var(--sds-font-mono); font-size:9.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; padding:3px 8px; border-radius:6px; }
+.sds-ptag--md, .sds-ptag--repo { color:#9a6a16; background:color-mix(in oklch,var(--sds-gold) 16%,transparent); border:1px solid color-mix(in oklch,var(--sds-gold) 40%,transparent); }
+.sds-ptag--html, .sds-ptag--code { color:var(--sds-primary); background:color-mix(in oklch,var(--sds-primary) 9%,transparent); border:1px solid color-mix(in oklch,var(--sds-primary) 28%,transparent); }
+.sds-ptag--release { color:#3d7a5a; background:color-mix(in oklch,#3d7a5a 12%,transparent); border:1px solid color-mix(in oklch,#3d7a5a 35%,transparent); }
+.sds-prow__title { font-family:var(--sds-font-serif); font-size:14.5px; line-height:1.3; }
+.sds-prow__meta { font-family:var(--sds-font-mono); font-size:10.5px; color:var(--sds-muted-foreground); }
+
+@media (max-width:720px){
+  .sds-feed { grid-template-columns:1fr; }
+  .sds-arow { grid-template-columns:72px 1fr 26px; }
+  .sds-arow__meta { display:none; }
+  .sds-timeline-grid { grid-template-columns:1fr; }
+}
+
+/* ---- Project filter chips ---- */
+.sds-activity .sds-chiprow { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; margin-bottom:var(--sds-space-6); }
+.sds-activity .sds-chiprow__label { font-family:var(--sds-font-mono); font-size:.62rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--sds-muted-foreground); margin-right:.25rem; }
+.sds-activity .sds-chip { font-family:var(--sds-font-mono); font-size:.68rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:.38rem .8rem; border-radius:9999px; border:1px solid var(--sds-border); color:var(--sds-muted-foreground); background:var(--sds-card); text-decoration:none; white-space:nowrap; transition:color .15s, border-color .15s, background .15s; }
+.sds-activity .sds-chip:hover { border-color:var(--sds-primary); color:var(--sds-primary); }
+.sds-activity .sds-chip--active { background:var(--sds-primary); border-color:var(--sds-primary); color:var(--sds-primary-foreground); }
+/* keep the active chip's label readable on hover (cream on maroon, not maroon on maroon) */
+.sds-activity .sds-chip--active:hover { color:var(--sds-primary-foreground); border-color:var(--sds-primary); opacity:.9; }
+
+/* ---- Timeline pager ---- */
+.sds-activity .sds-pager { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-top:.9rem; font-family:var(--sds-font-mono); font-size:.68rem; letter-spacing:.06em; text-transform:uppercase; color:var(--sds-muted-foreground); }
+.sds-activity .sds-pager__nav { display:flex; align-items:center; gap:.6rem; }
+.sds-activity .sds-pager a { color:var(--sds-primary); text-decoration:none; padding:.3rem .7rem; border:1px solid var(--sds-border); border-radius:9999px; }
+.sds-activity .sds-pager a:hover { border-color:var(--sds-primary); }
+.sds-activity .sds-pager a.disabled { opacity:.4; pointer-events:none; color:var(--sds-muted-foreground); }

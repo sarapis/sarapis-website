@@ -1,0 +1,56 @@
+# ── Sarapis workspace root ignore ──────────────────────────────────────────
+# site/ and design-system/ ship their own .gitignore (node_modules, .next,
+# dist, media, chromium cache, .env). This closes the remaining root-level gaps.
+
+# OS
+.DS_Store
+**/.DS_Store
+
+# Secrets / env (belt-and-suspenders — subdir gitignores also cover site/.env).
+# Example files are kept.
+.env
+*.env
+!*.env.example
+
+# Claude Code — personal/local settings (launch.json is tracked)
+.claude/settings.local.json
+
+# Runtime data — the SQLite content DB + backups + WAL/SHM. Regenerable / lives
+# on the box; not source. (Keep the code, not the data.)
+*.db
+*.db-wal
+*.db-shm
+*.bak-*
+
+# Deploy artifacts — the cross-built image tarballs are hundreds of MB.
+*.tar.gz
+site/deploy/*.tar.gz
+
+# Migration inputs/outputs — the WordPress export + derived JSON (re-exportable
+# from WP / regenerable via migration/extract_wxr.py).
+sarapis.WordPress.*.xml
+migration/out/
+
+# Node (safety net in case a stray package lands outside the subdir ignores)
+**/node_modules/
+
+# Logs
+*.log
+
+# ── Kept OUT of the public repo (they stay on disk for maintainers) ─────────
+# Operational detail: hosts, deploy targets, credential locations, incident
+# history. Claude Code loads CLAUDE.local.md automatically after CLAUDE.md.
+CLAUDE.local.md
+CONTINUE.md
+# Code reviews may describe unfixed vulnerabilities.
+REVIEW-*.md
+# One-shot scripts and runbooks written for a specific production box.
+site/deploy/DEPLOY-round37-multibrand.md
+site/deploy/curate-feed-r4*.py
+site/deploy/migrate-repo-rename.py
+# Design-tool deliverables and a bundled prototype — working files, not source.
+handoff/
+Sarapis Activity.html
+remote_site/
+# TypeScript incremental build cache.
+*.tsbuildinfo

@@ -1,0 +1,58 @@
+/* Sarapis design tokens — v0.2 "Tibetan" refinement */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Marcellus&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+  /* surfaces — warm cream / ink */
+  --sds-background: oklch(98.2% 0.009 70deg);
+  --sds-foreground: oklch(24% 0.03 40deg);
+  --sds-card: oklch(99.2% 0.006 70deg);
+  --sds-muted-foreground: oklch(44% 0.028 45deg);
+  --sds-border: oklch(90% 0.018 55deg);
+
+  /* brand — Tibetan maroon (replaces the old bright red #c93241) */
+  --sds-primary: #782a39;
+  --sds-primary-foreground: #fbf4e6;
+  --sds-ring: #9a4250;
+  --sds-accent: #f2e6e0;
+  --sds-accent-foreground: #782a39;
+
+  /* saffron accent + dark ink — ticks, rules, dark surfaces */
+  --sds-gold: #ffbb48;
+  --sds-ink: #2c1418;
+
+  /* type */
+  --sds-font-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --sds-font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+  --sds-font-mono: 'Space Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --sds-font-logo: 'Marcellus', Georgia, 'Times New Roman', serif;
+
+  /* radius + spacing scale */
+  --sds-radius-md: 0.5rem;
+  --sds-radius-lg: 0.75rem;
+  --sds-radius-xl: 1rem;
+  --sds-radius-pill: 9999px;
+  --sds-space-1: 0.25rem;
+  --sds-space-2: 0.5rem;
+  --sds-space-3: 0.75rem;
+  --sds-space-4: 1rem;
+  --sds-space-6: 1.5rem;
+  --sds-space-8: 2rem;
+}
+
+[data-theme='dark'] {
+  --sds-background: oklch(17% 0.014 40deg);
+  --sds-foreground: oklch(95% 0.012 70deg);
+  --sds-card: oklch(21% 0.014 40deg);
+  --sds-muted-foreground: oklch(72% 0.02 60deg);
+  --sds-border: oklch(28% 0.015 45deg);
+
+  --sds-primary: #c25c6e;
+  --sds-primary-foreground: #2c1418;
+  --sds-ring: #c25c6e;
+  --sds-accent: oklch(30% 0.04 40deg);
+  --sds-accent-foreground: oklch(85% 0.06 40deg);
+
+  --sds-gold: #ffbb48;
+  --sds-ink: #1a0f12;
+}
