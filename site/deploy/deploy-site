@@ -1,0 +1,123 @@
+#!/bin/bash
+# deploy-site — deploy the Sarapis site container on its host.
+#
+# Installed at /opt/sarapis/bin/deploy-site and used as the FORCED COMMAND of a
+# restricted SSH key: authorized_keys pins that key to this script, so whatever
+# the client asks to run arrives only as $SSH_ORIGINAL_COMMAND and is matched
+# here against three exact words. Nothing else can run with that key.
+#
+#   status         what is running, whether it answers, which images are loaded
+#   deploy-latest  recreate the container on the highest-numbered sarapis-site:rNN
+#                  image loaded on this host (ship + `docker load` the image first)
+#   rollback       recreate it on the next-lower image than the one running
+#
+# No image tag is accepted from the caller, by design: a fixed vocabulary is what
+# lets the key, and a permission rule for it, be exact rather than a pattern.
+# Run directly as root on the host, the same words work as the first argument.
+#
+# Each deploy snapshots the database first (SQLite online-backup API), then
+# checks the site answers before reporting success. It does not roll back on
+# its own. A failed health check says so and exits 1; `rollback` is the
+# deliberate next step.
+set -uo pipefail
+
+NAME=sarapis-site
+REPO=sarapis-site
+DATA=/opt/sarapis/data
+MEDIA=/opt/sarapis/media
+ENVFILE=/opt/sarapis/.env
+SNAPSHOTS=/opt/sarapis/backups/predeploy
+KEEP_SNAPSHOTS=5
+LOG=/var/log/sarapis-deploy.log
+
+REQ="${SSH_ORIGINAL_COMMAND-${1-}}"
+
+say() { printf '%s\n' "$*"; }
+log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*" >> "$LOG" 2>/dev/null; say "$*"; }
+die() { log "REFUSED/FAILED: $1"; exit "${2:-1}"; }
+
+# Loaded rNN tags, ascending by number.
+tags() {
+  docker images "$REPO" --format '{{.Tag}}' | grep -E '^r[0-9]{1,4}$' | sed 's/^r//' | sort -n | sed 's/^/r/'
+}
+running_tag() {
+  docker inspect --format '{{.Config.Image}}' "$NAME" 2>/dev/null | sed -n "s/^$REPO:\(r[0-9]\{1,4\}\)\$/\1/p"
+}
+code() { curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://127.0.0.1:3000$1"; }
+
+# The site is up when the home page and a database-backed API route both answer.
+healthy_within() {
+  local deadline=$(( $(date +%s) + $1 ))
+  while [ "$(date +%s)" -lt "$deadline" ]; do
+    [ "$(code /)" = 200 ] && [ "$(code '/api/sites?limit=1')" = 200 ] && return 0
+    sleep 2
+  done
+  return 1
+}
+
+snapshot_db() {
+  install -d -m 700 "$SNAPSHOTS"
+  local out="$SNAPSHOTS/sarapis-predeploy-$1-$(date -u +%Y%m%dT%H%M%SZ).db"
+  python3 - "$DATA/sarapis.db" "$out" <<'PY' || return 1
+import sqlite3, sys
+src = sqlite3.connect(f'file:{sys.argv[1]}?mode=ro', uri=True)
+dst = sqlite3.connect(sys.argv[2])
+src.backup(dst)
+ok = dst.execute('PRAGMA quick_check').fetchone()[0]
+dst.close(); src.close()
+if ok != 'ok':
+    sys.exit(f'snapshot failed quick_check: {ok}')
+PY
+  chmod 600 "$out"
+  ls -1t "$SNAPSHOTS"/sarapis-predeploy-*.db 2>/dev/null | tail -n +$((KEEP_SNAPSHOTS + 1)) | xargs -r rm -f
+  say "  db snapshot: $out"
+}
+
+deploy_tag() {
+  local tag=$1 from
+  from=$(running_tag)
+  docker image inspect "$REPO:$tag" >/dev/null 2>&1 || die "image $REPO:$tag is not loaded on this host"
+  if [ -n "${DEPLOY_DRY_RUN:-}" ]; then
+    say "DRY RUN: would snapshot the db, then replace ${from:-nothing} with $tag"
+    return 0
+  fi
+  log "deploy: ${from:-none} -> $tag"
+  snapshot_db "$tag" || die "database snapshot failed; nothing was changed"
+  docker rm -f "$NAME" >/dev/null 2>&1
+  docker run -d --name "$NAME" --restart unless-stopped --memory 1g \
+    -p 127.0.0.1:3000:3000 --env-file "$ENVFILE" \
+    -v "$DATA:/app/data" -v "$MEDIA:/app/media" \
+    "$REPO:$tag" >/dev/null || die "docker run failed for $tag — the site is DOWN; run: rollback"
+  if healthy_within 90; then
+    log "ok: $tag is serving (was ${from:-none})"
+  else
+    die "$tag started but is not answering after 90s — run: rollback (to ${from:-?})"
+  fi
+}
+
+case "$REQ" in
+  status)
+    say "running: $(running_tag || true)  ($(docker ps --filter name=^$NAME\$ --format '{{.Status}}'))"
+    say "home: $(code /)  api: $(code '/api/sites?limit=1')  sync-health: $(code /next/github-sync/health)  backup-health: $(code /next/backup/health)"
+    say "loaded images: $(tags | tr '\n' ' ')"
+    ;;
+  deploy-latest)
+    latest=$(tags | tail -1)
+    [ -n "$latest" ] || die "no $REPO:rNN images are loaded"
+    if [ "$latest" = "$(running_tag)" ]; then
+      say "already running $latest, the newest loaded image — nothing to do"
+      exit 0
+    fi
+    deploy_tag "$latest"
+    ;;
+  rollback)
+    cur=$(running_tag)
+    [ -n "$cur" ] || die "cannot tell which image is running, so cannot pick the previous one"
+    prev=$(tags | awk -v c="${cur#r}" '{ n = substr($0, 2) + 0 } n < c + 0 { p = $0 } END { print p }')
+    [ -n "$prev" ] || die "no image older than $cur is loaded"
+    deploy_tag "$prev"
+    ;;
+  *)
+    die "unknown request '${REQ:0:60}' — accepted: status | deploy-latest | rollback" 2
+    ;;
+esac

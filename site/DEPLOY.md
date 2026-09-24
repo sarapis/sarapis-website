@@ -125,6 +125,22 @@ Do **not** simply remove the noindex and leave it serving.
 
 ## 9. After launch
 - **Admin password:** the shipped `sarapis.db` seeds a throwaway dev login; on any deployment rotate it immediately (Log in → Users → strong password) and store it in a secrets manager — never in this repo.
+- **Deploying**: `deploy/deploy-site`, installed as `/opt/sarapis/bin/deploy-site`, accepts exactly three words.
+  - `status` shows what's running and whether it answers.
+  - `deploy-latest` recreates the container on the highest-numbered `sarapis-site:rNN` image loaded on the host.
+  - `rollback` recreates it on the next-lower image.
+
+  Ship and `docker load` the new image first. Each deploy takes a consistent database snapshot, keeping the last
+  5, then waits for the site to answer before reporting success. It never rolls back on its own: a failed health
+  check exits 1 and names the command to run.
+
+  No tag is accepted from the caller, and that is deliberate. A fixed vocabulary lets the script be the **forced
+  command** of a restricted SSH key, whose `authorized_keys` line is:
+  ```
+  restrict,command="/opt/sarapis/bin/deploy-site" ssh-ed25519 AAAA… deploy-key
+  ```
+  That key can run those three words and nothing else: no shell, no forwarding, no arguments. So an automated
+  deployer can hold it without holding root.
 - **Backups**: `deploy/backup/sarapis-backup.py` (Python 3 standard library only), run nightly by
   `deploy/backup/sarapis-backup.cron`. The site's state is the SQLite database plus the media directory,
   and the script backs up both:
