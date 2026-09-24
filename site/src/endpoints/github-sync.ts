@@ -391,7 +391,7 @@ export async function syncGithub({
   // summary from the commit messages / PR body. Written via seedIfEmpty, so it
   // fills once and never clobbers a hand-edited summary. Bounded per run so the
   // request can't run away; a backfill just takes a few runs. No key → skipped.
-  const GEMINI_KEY = process.env.GEMINI_API_KEY
+  const GEMINI_KEY = process.env.GEMINI_API_KEY || ''
   const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'
   const SUMMARY_MAX = Number(process.env.SUMMARY_MAX_PER_RUN || 30)
   let summaryCalls = 0 // counts ATTEMPTS, so a failing API cannot run the budget out of wall-clock
@@ -410,10 +410,11 @@ export async function syncGithub({
       await sleep(attempt === 0 ? GEMINI_THROTTLE_MS : 30_000) // pace normally; back off hard on a 429 retry
       try {
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
           {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            // Key in a header, not the URL, so it stays out of logs and error text.
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_KEY },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
               // thinkingBudget:0 — trivial summarization task, and the Gemini 2.5/3.x

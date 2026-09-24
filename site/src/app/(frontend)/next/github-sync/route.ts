@@ -1,7 +1,7 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { headers } from 'next/headers'
-import { timingSafeEqual } from 'node:crypto'
+import { safeEqual } from '@/utilities/safeEqual'
 import { parseBackfillSince, syncGithub, syncOutcome } from '@/endpoints/github-sync'
 import { recordSyncRun } from '@/endpoints/github-sync-health'
 
@@ -9,12 +9,6 @@ import { recordSyncRun } from '@/endpoints/github-sync-health'
 // AbortSignal timeout inside the sync's GitHub fetches.
 export const maxDuration = 300
 export const dynamic = 'force-dynamic'
-
-function safeEqual(a: string, b: string): boolean {
-  const ab = Buffer.from(a)
-  const bb = Buffer.from(b)
-  return ab.length === bb.length && timingSafeEqual(ab, bb)
-}
 
 async function authorized(): Promise<boolean> {
   const secret = process.env.CRON_SECRET

@@ -3,6 +3,7 @@ import sharp from 'sharp'
 import path from 'path'
 import { buildConfig, PayloadRequest } from 'payload'
 import { fileURLToPath } from 'url'
+import { safeEqual } from './utilities/safeEqual'
 
 import { Categories } from './collections/Categories'
 import { Media } from './collections/Media'
@@ -134,7 +135,7 @@ export default buildConfig({
         // for the Vercel Cron secret to be present as an
         // Authorization header:
         const authHeader = req.headers.get('authorization')
-        return authHeader === `Bearer ${secret}`
+        return safeEqual(authHeader || '', `Bearer ${secret}`)
       },
     },
     tasks: [],

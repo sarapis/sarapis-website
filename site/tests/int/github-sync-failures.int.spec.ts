@@ -17,6 +17,7 @@ import { syncGithub } from '@/endpoints/github-sync'
  */
 const OWNER = 'rtest-ok'
 const calls: string[] = []
+const geminiKeyHeaders: (string | null)[] = []
 let payload: Payload
 let summary: Awaited<ReturnType<typeof syncGithub>>
 const savedEnv: Record<string, string | undefined> = {}
@@ -51,13 +52,16 @@ const bigHistory = [
   ...Array.from({ length: 400 }, (_, i) => commit('2026-09-01', i)),
 ]
 
-function fakeFetch(input: string | URL | Request): Promise<Response> {
+function fakeFetch(input: string | URL | Request, init?: RequestInit): Promise<Response> {
   const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
   calls.push(url.href)
   const page = Number(url.searchParams.get('page') || '1')
   const p = url.pathname
 
-  if (url.hostname === 'generativelanguage.googleapis.com') return Promise.resolve(json({ error: 'overloaded' }, 503))
+  if (url.hostname === 'generativelanguage.googleapis.com') {
+    geminiKeyHeaders.push(new Headers(init?.headers).get('x-goog-api-key'))
+    return Promise.resolve(json({ error: 'overloaded' }, 503))
+  }
   if (url.hostname !== 'api.github.com') throw new Error(`unexpected fetch: ${url.href}`)
 
   if (p === '/orgs/rtest-dead/repos') return Promise.resolve(json({ message: 'Bad credentials' }, 401))
@@ -136,5 +140,12 @@ describe('github-sync reports its failures', () => {
   it('M5: a Gemini failure is a warning, not a sync error', () => {
     expect(summary.warnings.some((w) => w.startsWith('gemini 503'))).toBe(true)
     expect(summary.errors.some((e) => e.startsWith('gemini'))).toBe(false)
+  })
+
+  it('L5: the Gemini key travels in a header, never in the URL', () => {
+    const geminiCalls = calls.filter((u) => u.includes('generativelanguage'))
+    expect(geminiCalls.length).toBeGreaterThan(0)
+    for (const u of geminiCalls) expect(u).not.toContain('test-key')
+    expect(geminiKeyHeaders).toEqual(['test-key'])
   })
 })
