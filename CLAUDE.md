@@ -69,6 +69,10 @@ on update; editorial fields (`published`, `pinned`, `project`, `summary`, …) a
 - Owners come from `SYNC_OWNERS`, which **replaces** the defaults rather than extending them.
   Per-owner fine-grained tokens: `GITHUB_TOKEN_<OWNER uppercased>`, falling back to `GITHUB_TOKEN`.
 - Auto-publish only for `PUBLISH_ACTORS` logins. Commit events are aggregated per day.
+  ⚠ **The gate reads only GitHub-attributed accounts** (`commit.author.login`), never the git
+  `user.name` — that is free text anyone landing a commit can set. `aggregateCommitsByDay` keeps
+  them apart as `logins` (gate) and `names` (display); `tests/int/github-sync-publish-gate.int.spec.ts`
+  pins it.
 - **Internal engineering process is kept off the public feed** at the commit-*message* level
   (`isInternalLine`), not the event level, because one day mixes real work with deploy churn.
   An event with nothing public is created *unpublished*, never dropped.

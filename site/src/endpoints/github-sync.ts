@@ -74,7 +74,7 @@ type GhRepo = {
   archived: boolean
   owner: { login: string }
 }
-type GhCommit = {
+export type GhCommit = {
   sha: string
   author: { login: string } | null // linked GitHub account (null if email unmatched)
   commit: { message: string; author?: { name?: string; date?: string }; committer?: { date?: string } }
@@ -196,6 +196,35 @@ async function listOwnerRepos(owner: string, token: string): Promise<GhRepo[]> {
   const org = await ghList<GhRepo>(`/orgs/${owner}/repos?type=all&sort=pushed`, token)
   if (org.length) return org
   return ghList<GhRepo>(`/users/${owner}/repos?type=all&sort=pushed`, token)
+}
+
+/**
+ * One entry per calendar day (the unit of a commit event).
+ *
+ * `logins` feeds the auto-publish gate, so it holds ONLY GitHub accounts GitHub
+ * itself attributed commits to (`c.author.login`). `c.commit.author.name` is
+ * free text from `git config user.name` — anyone who can land a commit in a
+ * synced repo can type a publish actor's username there — so it is used for
+ * display (`names`) and never for the gate.
+ */
+type CommitDay = { count: number; logins: Set<string>; names: Set<string>; ai: boolean; messages: string[] }
+
+export function aggregateCommitsByDay(commits: GhCommit[]): Map<string, CommitDay> {
+  const byDay = new Map<string, CommitDay>()
+  for (const c of commits) {
+    const date = (c.commit.committer?.date || c.commit.author?.date || '').slice(0, 10)
+    if (!date) continue
+    const e = byDay.get(date) || { count: 0, logins: new Set<string>(), names: new Set<string>(), ai: false, messages: [] }
+    e.count++
+    if (c.author?.login) e.logins.add(c.author.login)
+    const display = c.author?.login || c.commit.author?.name
+    if (display) e.names.add(display)
+    if (AI_TRAILER.test(c.commit.message || '')) e.ai = true
+    // first line of each message, capped, for the AI summary input
+    if (c.commit.message && e.messages.length < 20) e.messages.push(c.commit.message.split('\n')[0].slice(0, 160))
+    byDay.set(date, e)
+  }
+  return byDay
 }
 
 function daysAgo(iso: string | null): number {
@@ -460,22 +489,11 @@ export async function syncGithub({ payload }: { payload: Payload }): Promise<Sum
 
         // commits → one aggregated event per calendar day, with the distinct
         // author logins for that day and an AI flag from the co-author trailer.
-        const byDay = new Map<string, { count: number; logins: Set<string>; ai: boolean; messages: string[] }>()
-        for (const c of commits) {
-          const date = (c.commit.committer?.date || c.commit.author?.date || '').slice(0, 10)
-          if (!date) continue
-          const e = byDay.get(date) || { count: 0, logins: new Set<string>(), ai: false, messages: [] }
-          e.count++
-          const login = c.author?.login || c.commit.author?.name
-          if (login) e.logins.add(login)
-          if (AI_TRAILER.test(c.commit.message || '')) e.ai = true
-          // first line of each message, capped, for the AI summary input
-          if (c.commit.message && e.messages.length < 20) e.messages.push(c.commit.message.split('\n')[0].slice(0, 160))
-          byDay.set(date, e)
-        }
+        const byDay = aggregateCommitsByDay(commits)
         for (const [date, e] of byDay) {
-          const logins = [...e.logins].sort()
-          const actor = logins.length <= 2 ? logins.join(', ') : `${logins[0]}, +${logins.length - 1}`
+          const logins = [...e.logins].sort() // the auto-publish gate: attributed accounts only
+          const names = [...e.names].sort() // display: accounts, else the git name
+          const actor = names.length <= 2 ? names.join(', ') : `${names[0]}, +${names.length - 1}`
           const externalId = `commits:${fullName}:${date}`
           // Summarize only the substantive commits, so a mixed day still yields
           // a summary of the user-visible work. `title` keeps the TRUE commit
