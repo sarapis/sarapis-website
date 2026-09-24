@@ -26,8 +26,27 @@ type Summary = {
   // they were created unpublished. Reported so a run that quietly filters a lot
   // is visible in the cron log rather than looking like the sync found nothing.
   filtered: { commitDays: number; pulls: number }
+  // Data that did NOT sync: a failed owner listing, repo, commits/releases/PRs
+  // fetch, or an exhausted rate limit. Any entry makes the run a failure (see
+  // syncOutcome) — never just a line in a log nobody reads.
   errors: string[]
+  // Degraded but nothing lost: AI summaries skipped (retried next run), or a
+  // commit window capped (reported with how to backfill it).
+  warnings: string[]
 }
+
+/**
+ * The run's verdict. A run that skipped an owner or a repo used to return
+ * `success: true` / HTTP 200 with the failure buried in `errors` — one dead
+ * token went unnoticed for 766 consecutive hourly runs that way.
+ */
+export function syncOutcome(summary: Pick<Summary, 'errors'>): { ok: boolean; status: number } {
+  const ok = summary.errors.length === 0
+  return { ok, status: ok ? 200 : 500 }
+}
+
+/** GitHub rate limit exhausted for this token: stop spending calls on it. */
+class RateLimitError extends Error {}
 
 function ghHeaders(token: string): HeadersInit {
   return {
@@ -46,7 +65,12 @@ async function gh<T>(path: string, token: string): Promise<T | null> {
     // stalled GitHub connection would hang the sync request indefinitely.
     signal: AbortSignal.timeout(15_000),
   })
-  if (res.status === 404) return null
+  // 404: no such resource (e.g. releases disabled). 409: "Git Repository is
+  // empty" — a brand-new repo has no commits yet, which is not a failure.
+  if (res.status === 404 || res.status === 409) return null
+  if ((res.status === 403 || res.status === 429) && res.headers.get('x-ratelimit-remaining') === '0') {
+    throw new RateLimitError(`GitHub rate limit exhausted (resets ${res.headers.get('x-ratelimit-reset') || '?'})`)
+  }
   if (!res.ok) throw new Error(`GitHub ${res.status} for ${path}: ${(await res.text()).slice(0, 200)}`)
   return (await res.json()) as T
 }
@@ -227,12 +251,61 @@ export function aggregateCommitsByDay(commits: GhCommit[]): Map<string, CommitDa
   return byDay
 }
 
+/**
+ * Where a repo's commit fetch starts (ISO timestamp for GitHub's `since`).
+ *
+ * The sync used to take ONE page of the newest 100 commits with no `since`, so
+ * a repo that went quiet and came back, or any hour with >100 commits, lost
+ * everything older than that page permanently and silently — one repo kept 0
+ * of 9+ days across a 6-week gap. Now the window opens at 00:00 UTC of the
+ * newest day already recorded, so that day is refetched in full (GitHub's
+ * `since` filters on committer date, the same date days are bucketed by) and
+ * every newer day is complete. A repo seen for the first time gets the whole
+ * active window. `backfillSince` (YYYY-MM-DD) can only widen the window.
+ */
+export function commitWindowStart(
+  newestRecordedOccurredAt: string | undefined,
+  backfillSince: string | undefined,
+  now: number,
+): string {
+  let day = newestRecordedOccurredAt
+    ? newestRecordedOccurredAt.slice(0, 10)
+    : new Date(now - ACTIVE_WINDOW_DAYS * 86400000).toISOString().slice(0, 10)
+  if (backfillSince && backfillSince < day) day = backfillSince
+  return `${day}T00:00:00Z`
+}
+
+/**
+ * Validate a `?since=YYYY-MM-DD` backfill date. It must be a real calendar
+ * date: `new Date('2026-13-45…')` is an Invalid Date whose toISOString()
+ * THROWS, and a rolled-over date like 2026-02-30 silently means March 2.
+ */
+export function parseBackfillSince(value: string | null): { since?: string; bad?: boolean } {
+  if (!value) return {}
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return { bad: true }
+  const d = new Date(`${value}T00:00:00Z`)
+  if (Number.isNaN(d.getTime()) || !d.toISOString().startsWith(value)) return { bad: true }
+  return { since: value }
+}
+
+// Commit pages per repo per run. A normal run's window is a day or two; a
+// backfill may be large, so it is allowed more.
+const COMMIT_MAX_PAGES = 10
+const COMMIT_MAX_PAGES_BACKFILL = 50
+
 function daysAgo(iso: string | null): number {
   if (!iso) return Infinity
   return (Date.now() - new Date(iso).getTime()) / 86400000
 }
 
-export async function syncGithub({ payload }: { payload: Payload }): Promise<Summary> {
+export async function syncGithub({
+  payload,
+  backfillSince,
+}: {
+  payload: Payload
+  /** YYYY-MM-DD: refetch every repo's commits from at least this day (repairs lost history). */
+  backfillSince?: string
+}): Promise<Summary> {
   const token = process.env.GITHUB_TOKEN
   if (!token) throw new Error('GITHUB_TOKEN is not set')
   const owners = (process.env.SYNC_OWNERS || DEFAULT_OWNERS.join(','))
@@ -253,6 +326,7 @@ export async function syncGithub({ payload }: { payload: Payload }): Promise<Sum
     events: { created: 0, updated: 0, byKind: {} },
     filtered: { commitDays: 0, pulls: 0 },
     errors: [],
+    warnings: [],
   }
 
   /**
@@ -320,7 +394,11 @@ export async function syncGithub({ payload }: { payload: Payload }): Promise<Sum
   const GEMINI_KEY = process.env.GEMINI_API_KEY
   const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'
   const SUMMARY_MAX = Number(process.env.SUMMARY_MAX_PER_RUN || 30)
-  let summaryCalls = 0
+  let summaryCalls = 0 // counts ATTEMPTS, so a failing API cannot run the budget out of wall-clock
+  // Circuit breaker: after the first hard failure, skip Gemini for the rest of the
+  // run. Each skipped event keeps an empty summary, which the next run fills
+  // (summaries are seeded only while empty), so nothing is lost by stopping early.
+  let geminiDown = false
 
   // Free-tier Gemini caps requests-per-minute, so pace the calls and retry on 429
   // (bursts otherwise trip the limit). Tunable via GEMINI_THROTTLE_MS.
@@ -348,18 +426,21 @@ export async function syncGithub({ payload }: { payload: Payload }): Promise<Sum
         )
         if (res.status === 429) continue // rate limited — wait and retry
         if (!res.ok) {
-          summary.errors.push(`gemini ${res.status}: ${(await res.text()).slice(0, 120)}`)
+          summary.warnings.push(`gemini ${res.status}: ${(await res.text()).slice(0, 120)} — summaries skipped for the rest of this run`)
+          geminiDown = true
           return null
         }
         const j = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] }
         const text = j?.candidates?.[0]?.content?.parts?.[0]?.text
         return text ? text.trim() : null
       } catch (e) {
-        summary.errors.push(`gemini: ${(e as Error).message}`)
+        summary.warnings.push(`gemini: ${(e as Error).message} — summaries skipped for the rest of this run`)
+        geminiDown = true
         return null
       }
     }
-    summary.errors.push('gemini: gave up after repeated 429s')
+    summary.warnings.push('gemini: gave up after repeated 429s — summaries skipped for the rest of this run')
+    geminiDown = true
     return null
   }
 
@@ -370,7 +451,7 @@ export async function syncGithub({ payload }: { payload: Payload }): Promise<Sum
   // know" must not read as "suppress".
   type SummaryResult = { summary?: string; nothingPublic?: boolean }
   async function maybeSummary(externalId: string, kind: 'commit' | 'pr', content: string): Promise<SummaryResult> {
-    if (!GEMINI_KEY || !content.trim() || summaryCalls >= SUMMARY_MAX) return {}
+    if (!GEMINI_KEY || geminiDown || !content.trim() || summaryCalls >= SUMMARY_MAX) return {}
     const ex = await payload.find({
       collection: 'activity-events',
       where: { externalId: { equals: externalId } },
@@ -392,9 +473,9 @@ export async function syncGithub({ payload }: { payload: Payload }): Promise<Sum
       `If nothing in the input is publicly meaningful, reply with exactly ${NOTHING_PUBLIC} and nothing else. ` +
       `No preamble, no markdown, no headings, under 55 words.\n\n` +
       content.slice(0, 4000)
+    summaryCalls++
     const s = await geminiSummary(prompt)
     if (!s) return {}
-    summaryCalls++
     // Tolerate the model wrapping the sentinel in punctuation/quotes.
     if (s.toUpperCase().replace(/[^A-Z_]/g, '').includes(NOTHING_PUBLIC)) return { nothingPublic: true }
     return { summary: s }
@@ -481,15 +562,55 @@ export async function syncGithub({ payload }: { payload: Payload }): Promise<Sum
         // Skip the expensive calls for long-dormant repos.
         if (daysAgo(repo.pushed_at) > ACTIVE_WINDOW_DAYS) continue
 
+        // A failed fetch is recorded, never swallowed: `.catch(() => [])` here used
+        // to make a 401/403 indistinguishable from "this repo had no activity",
+        // with nothing reaching `errors` at all. A rate limit is rethrown so the
+        // rest of this owner's repos aren't fetched with a spent token.
+        const fetchList = async <T,>(what: string, path: string, pages: number): Promise<T[]> => {
+          try {
+            return await ghList<T>(path, ownerToken, pages)
+          } catch (e) {
+            if (e instanceof RateLimitError) throw e
+            summary.errors.push(`${fullName} ${what}: ${(e as Error).message}`)
+            return []
+          }
+        }
+
+        const newestCommit = await payload.find({
+          collection: 'activity-events',
+          where: { and: [{ repoFullName: { equals: fullName } }, { kind: { equals: 'commit' } }] },
+          sort: '-occurredAt',
+          limit: 1,
+          depth: 0,
+          overrideAccess: true,
+        })
+        const since = commitWindowStart(
+          (newestCommit.docs[0] as unknown as { occurredAt?: string } | undefined)?.occurredAt,
+          backfillSince,
+          Date.now(),
+        )
+        const commitPages = backfillSince ? COMMIT_MAX_PAGES_BACKFILL : COMMIT_MAX_PAGES
+
         const [commits, releases, pulls] = await Promise.all([
-          ghList<GhCommit>(`/repos/${fullName}/commits`, ownerToken, 1).catch(() => []),
-          ghList<GhRelease>(`/repos/${fullName}/releases`, ownerToken, 1).catch(() => []),
-          ghList<GhPull>(`/repos/${fullName}/pulls?state=all&sort=updated&direction=desc`, ownerToken, 1).catch(() => []),
+          fetchList<GhCommit>('commits', `/repos/${fullName}/commits?since=${since}`, commitPages),
+          fetchList<GhRelease>('releases', `/repos/${fullName}/releases`, 1),
+          fetchList<GhPull>('pulls', `/repos/${fullName}/pulls?state=all&sort=updated&direction=desc`, 1),
         ])
 
         // commits → one aggregated event per calendar day, with the distinct
         // author logins for that day and an AI flag from the co-author trailer.
         const byDay = aggregateCommitsByDay(commits)
+        // Hitting the page cap means older commits in the window were not
+        // fetched. Commits arrive newest first, so every day is complete except
+        // possibly the oldest one — skip it rather than write a short count.
+        if (commits.length >= commitPages * 100) {
+          const oldest = [...byDay.keys()].sort()[0]
+          if (oldest) byDay.delete(oldest)
+          summary.warnings.push(
+            `${fullName}: commits capped at ${commitPages * 100} since ${since.slice(0, 10)}; ` +
+              `${oldest || 'no'} day skipped as possibly incomplete. Backfill with ?since=YYYY-MM-DD.`,
+          )
+        }
         for (const [date, e] of byDay) {
           const logins = [...e.logins].sort() // the auto-publish gate: attributed accounts only
           const names = [...e.names].sort() // display: accounts, else the git name
@@ -565,6 +686,12 @@ export async function syncGithub({ payload }: { payload: Payload }): Promise<Sum
           )
         }
       } catch (e) {
+        if (e instanceof RateLimitError) {
+          // This owner's token is spent: stop calling with it. Other owners may
+          // have their own tokens, so the run moves on to them.
+          summary.errors.push(`${owner}: ${e.message}; ${fullName} and the rest of ${owner}'s repos skipped`)
+          break
+        }
         summary.errors.push(`${fullName}: ${(e as Error).message}`)
       }
     }

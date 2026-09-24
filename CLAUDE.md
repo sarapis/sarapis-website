@@ -78,8 +78,17 @@ on update; editorial fields (`published`, `pinned`, `project`, `summary`, …) a
   An event with nothing public is created *unpublished*, never dropped.
 - AI summaries come from Gemini. The 2.5/3.x "flash" models are *thinking* models: keep
   `thinkingConfig.thinkingBudget: 0` or they spend the output budget reasoning and return a fragment.
-- ⚠ **Read `summary.errors`, not the status code.** A failing owner or repo is caught and the
-  run still returns `success: true` / HTTP 200.
+- **Failures are reported, not swallowed.** `summary.errors` = data that did not sync (a failed owner,
+  repo or fetch, or a spent rate limit); any entry makes the run `success: false` / HTTP 500.
+  `summary.warnings` = degraded but nothing lost (Gemini skipped, retried next run; a capped commit
+  window). **`GET /next/github-sync/health`** (public, counts only) is 503 when the last run had errors
+  *or* no run has finished in 150 min — point an uptime monitor at it. A dead cron is silence, not a
+  failing run, so the staleness half matters as much as the error half.
+- **Commits are fetched in a window** (`commitWindowStart`): from 00:00 UTC of the newest recorded day,
+  or the whole active window for a new repo — GitHub's `since` filters on committer date, the same date
+  days are bucketed by. Repair lost history with `?since=YYYY-MM-DD` on the sync route.
+- Gemini has a per-run **circuit breaker**: after one hard failure it is skipped for the rest of the
+  run, and the budget counts attempts, so an outage can't turn a sync into an hours-long request.
 - ⚠ `externalId` embeds `repoFullName`, so a **fork** of an already-synced repo re-ingests the
   shared history as duplicate events.
 - The route has an in-process mutex (409 "Sync already running"), and a client timeout does not
