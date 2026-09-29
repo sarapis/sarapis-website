@@ -5,9 +5,9 @@ test.describe('Frontend', () => {
   test('home renders the Sarapis page', async ({ page }) => {
     await page.goto('http://localhost:3000')
     await expect(page).toHaveTitle(/^Sarapis/)
-    await expect(page.locator('h1.sds-onehero__title')).not.toBeEmpty()
+    await expect(page.locator('h1.rd-hero__title')).not.toBeEmpty()
     for (const section of ['Services', 'About'])
-      await expect(page.locator('h2.sds-seclead__title', { hasText: section })).toBeVisible()
+      await expect(page.locator('h2.rd-h2', { hasText: section })).toBeVisible()
   })
 
   test('home section links navigate', async ({ page }) => {

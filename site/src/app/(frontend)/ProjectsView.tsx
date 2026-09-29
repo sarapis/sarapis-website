@@ -1,28 +1,22 @@
 import React from 'react'
 import Link from 'next/link'
 import { getPayload } from 'payload'
-import type { Where } from 'payload'
 import configPromise from '@payload-config'
+import { ProjectCard, type ProjectCardData } from './RdCards'
+import { cardFor, loadProjectMeta } from './rdData'
 
 /**
- * Shared Projects section — region tabs + lineage hierarchy + per-project
- * activity feed. Used by the home page ("Active Projects", active-only, no
- * status filter, links out to /projects) and the /projects All Projects page
- * (every status, with the status filter). Self-contained: fetches its own data.
+ * Shared Projects section — region chips + a mosaic of glass project cards (pinned
+ * projects get a top row of two large cards, the rest sit three across; integrated
+ * apps show as monogram tiles on hover). Used by the home page ("Active projects", active-only, links
+ * out to /projects) and the /projects page (every status, with the status
+ * filter). Self-contained: fetches its own data.
  */
 
-const fmtDate = (d?: string | null) =>
-  d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
-const fmtMonthYear = (d?: string | null) =>
-  d ? new Date(d).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toUpperCase() : ''
-
-const eventDot: Record<string, string> = { commit: 'code', pr: 'code', release: 'release', repo: 'repo' }
-const statusBadge: Record<string, string> = { active: 'active', reached: 'reached', declared: 'declared' }
-
 const REGIONS = [
-  { key: 'all', name: 'All Projects', tag: 'Everything we build', text: 'Every open-source project we actively build and maintain — local civic tech in New York City and infrastructure for the global movement.' },
-  { key: 'nyc', name: 'New York City', tag: 'Local civic tech', text: 'Open tools and shared data built with NYC agencies and community groups to make city government legible and accountable.' },
-  { key: 'global', name: 'Global Movement', tag: 'Open source at large', text: 'Platforms, standards and infrastructure we maintain for communities and institutions worldwide.' },
+  { key: 'all', name: 'All' },
+  { key: 'nyc', name: 'New York City' },
+  { key: 'global', name: 'Global' },
 ]
 
 const PROJECT_STATUSES: { label: string; value: string | null }[] = [
@@ -39,7 +33,6 @@ export async function ProjectsView({
   pstatus = null,
   restrictActive = false,
   showStatusFilter = false,
-  perProjectEvents = 3,
   heading,
   metaSlot,
 }: {
@@ -49,7 +42,6 @@ export async function ProjectsView({
   pstatus?: string | null
   restrictActive?: boolean
   showStatusFilter?: boolean
-  perProjectEvents?: number
   heading: string
   metaSlot?: React.ReactNode
 }) {
@@ -62,6 +54,7 @@ export async function ProjectsView({
     depth: 1,
   })
   const allProjects = projectsRes.docs as any[]
+  const meta = await loadProjectMeta(payload, allProjects.map((p) => p.id))
 
   const pId = (p: any) => p?.id
   const parentId = (p: any) => (p?.parent && typeof p.parent === 'object' ? p.parent.id : p.parent) ?? null
@@ -69,33 +62,6 @@ export async function ProjectsView({
   // Home restricts to active projects; the All Projects page shows every status.
   const inScope = (p: any) => (restrictActive ? p.status === 'active' : true)
 
-  // Per-project recent activity.
-  const visibleIds = allProjects.map(pId)
-  const eventsByProject = new Map<number, any[]>()
-  const lastActiveByProject = new Map<number, string>()
-  if (visibleIds.length) {
-    const evRes = await payload.find({
-      collection: 'activity-events',
-      where: { published: { equals: true }, project: { in: visibleIds } } as Where,
-      // Pinned events float to the front so a single-item card (home) shows the
-      // curated highlight if one exists, else the most recent event.
-      sort: ['-pinned', '-occurredAt'],
-      limit: 400,
-      depth: 0,
-    })
-    for (const e of evRes.docs as any[]) {
-      const idp = e.project && typeof e.project === 'object' ? e.project.id : e.project
-      if (idp == null) continue
-      if (!eventsByProject.has(idp)) eventsByProject.set(idp, [])
-      const arr = eventsByProject.get(idp)!
-      if (arr.length < perProjectEvents) arr.push(e)
-      // "Last activity" label = most recent event, independent of pinning.
-      const prev = lastActiveByProject.get(idp)
-      if (!prev || (e.occurredAt && e.occurredAt > prev)) lastActiveByProject.set(idp, e.occurredAt)
-    }
-  }
-
-  const countFor = (r: string) => allProjects.filter((p) => (r === 'all' || regionOf(p) === r) && inScope(p)).length
   const regionProjects = allProjects
     .filter((p) => (region === 'all' || regionOf(p) === region) && inScope(p))
     .filter((p) => (pstatus ? p.status === pstatus : true))
@@ -109,12 +75,28 @@ export async function ProjectsView({
       childrenOf.get(par)!.push(p)
     } else topLevel.push(p)
   }
-  topLevel.sort((a, b) => {
-    const rank = (p: any) => (p.role === 'flagship' || childrenOf.has(pId(p)) ? 0 : 1)
-    return rank(a) - rank(b) || String(a.name).localeCompare(String(b.name))
-  })
+  const kidsOf = (p: any) => childrenOf.get(pId(p)) || []
 
-  const projHref = (id: number) => `/projects/${id}`
+  // Order: most recently updated first (newest commit, PR, release or knowledge
+  // item on the project or any of its apps). Pinned projects (the "pinned" checkbox
+  // in the admin) override that and take the top row as up to two large cards.
+  const byName = (x: any, y: any) => String(x.name).localeCompare(String(y.name))
+  const lastAt = (p: any) => [p, ...kidsOf(p)].map((x) => meta.updated.get(x.id) || '').reduce((m, d) => (d > m ? d : m), '')
+  const byRecent = (x: any, y: any) => lastAt(y).localeCompare(lastAt(x)) || byName(x, y)
+  const pinned = topLevel.filter((p) => p.pinned).sort(byRecent).slice(0, 2)
+  const pinnedIds = new Set(pinned.map(pId))
+  const rest = topLevel.filter((p) => !pinnedIds.has(pId(p))).sort(byRecent)
+
+  const cards: ProjectCardData[] = [
+    ...pinned.map((p) => ({
+      ...cardFor(p, kidsOf(p), meta),
+      featured: true,
+      span: pinned.length === 1 ? 'rd-span-6' : 'rd-span-3',
+      ratio: pinned.length === 1 ? '16 / 10' : '4 / 3',
+    })),
+    ...rest.map((p) => ({ ...cardFor(p, kidsOf(p), meta), span: 'rd-span-2' })),
+  ]
+
   const regionHref = (r: string) => {
     const u = new URLSearchParams()
     if (r !== 'all') u.set('region', r)
@@ -130,195 +112,43 @@ export async function ProjectsView({
     return (s ? `${basePath}?${s}` : basePath) + anchor
   }
 
-  const activityFeed = (p: any) => {
-    const evs = eventsByProject.get(pId(p)) || []
-    if (!evs.length) {
-      return (
-        <div className="sds-empty" style={{ margin: 14, border: 'none', background: 'transparent', padding: '14px 16px' }}>
-          No activity synced yet.
-        </div>
-      )
-    }
-    return evs.map((e, i) => (
-      <div className="sds-trow" key={i}>
-        <div className="sds-trow__date">{fmtDate(e.occurredAt)}</div>
-        <div className={`sds-tdot sds-tdot--${eventDot[e.kind] || 'code'}`} />
-        <div>
-          <span className="sds-lrow__title" style={{ fontSize: 13.5 }}>
-            {e.title}{' '}
-            {e.repoFullName && <span className="repo" style={{ fontFamily: 'var(--sds-font-mono)', fontWeight: 700, color: 'var(--sds-primary)' }}>{e.repoFullName}</span>}
-          </span>
-          {(e.summary || e.note) && <p className="sds-esum">{e.summary || e.note}</p>}
-        </div>
-      </div>
-    ))
-  }
-
-  const ProjectCard = ({ p }: { p: any }) => {
-    const kids = childrenOf.get(pId(p)) || []
-    const isFlagship = p.role === 'flagship' || kids.length > 0
-    const last = lastActiveByProject.get(pId(p))
-    return (
-      <div className="sds-pcardwrap">
-        <div className="sds-pcard">
-          <div className="sds-pcard__main">
-            <div className="sds-pcard__head">
-              <a href={projHref(pId(p))} style={{ textDecoration: 'none' }}>
-                <h3 className="sds-pcard__title">{p.name}</h3>
-              </a>
-              <span className={`sds-badge sds-badge--${statusBadge[p.status] || 'declared'}`}>
-                {p.status === 'active' && <span className="dot" />}
-                {p.status}
-              </span>
-            </div>
-            {(isFlagship || p.lineage) && (
-              <div className="sds-lstrip">
-                <span className="sds-lchip">{isFlagship ? '★ Flagship platform' : p.lineage}</span>
-                {isFlagship && (
-                  <span className="sds-lnote">
-                    Integrates <strong>{kids.length}</strong> app{kids.length === 1 ? '' : 's'} that began as experiments
-                  </span>
-                )}
-              </div>
-            )}
-            {p.summary && <p className="sds-pcard__blurb">{p.summary}</p>}
-            {/* Who leads it / what Sarapis does — reuses .sds-lstrip (already carries
-                the card's 0 16px inset) and .sds-lnote (mono, muted, with strong in
-                primary), so no new CSS and the design-system sync stays at r34. */}
-            {(p.projectLeader || p.sarapisRole) && (
-              <div className="sds-lstrip">
-                {p.projectLeader && (
-                  <span className="sds-lnote">
-                    Project leader <strong>{p.projectLeader}</strong>
-                  </span>
-                )}
-                {p.sarapisRole && (
-                  <span className="sds-lnote">
-                    Sarapis role <strong>{p.sarapisRole}</strong>
-                  </span>
-                )}
-              </div>
-            )}
-            {p.site && (
-              <a className="sds-psite" href={/^https?:\/\//.test(p.site) ? p.site : `https://${p.site}`} target="_blank" rel="noopener noreferrer">
-                ↗ {p.site.replace(/^https?:\/\//, '')}
-              </a>
-            )}
-            <a className="sds-pfoot" href={projHref(pId(p))}>
-              Full profile &amp; activity <span className="sds-arr">→</span>
-            </a>
-          </div>
-          <div className="sds-pcard__side">
-            <div className="sds-sidehd">Last activity{last ? ` · ${fmtMonthYear(last)}` : ''}</div>
-            {activityFeed(p)}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <section id="projects" className="sds-container sds-band">
-      <div className="sds-seclead">
-        <h2 className="sds-seclead__title">{heading}</h2>
-        {metaSlot}
-      </div>
-
-      {/* Region tabs */}
-      <div className="sds-rtabs">
-        {REGIONS.map((r) => (
-          <Link key={r.key} className={`sds-rtab${region === r.key ? ' is-on' : ''}`} href={regionHref(r.key)} scroll={false}>
-            <div className="sds-rtab__top">
-              <span className="sds-rtab__name">{r.name}</span>
-              <span className="sds-rtab__tag">{r.tag}</span>
-              <span className="sds-rtab__count">{countFor(r.key)} projects</span>
-            </div>
-            <div className="sds-rtab__text">{r.text}</div>
-          </Link>
-        ))}
+    <section id="projects" className="sds-container rd-sec rd-sec--first">
+      <div className="rd-head">
+        <h2 className="rd-h2">{heading}</h2>
+        <div className="rd-carctl">
+          {REGIONS.map((r) => (
+            <Link key={r.key} className={`sds-chip${region === r.key ? ' sds-chip--active' : ''}`} href={regionHref(r.key)} scroll={false}>
+              {r.name}
+            </Link>
+          ))}
+          {metaSlot}
+        </div>
       </div>
 
       {/* Status filter (All Projects page only) */}
       {showStatusFilter && (
-        <div className="sds-toolbar" style={{ marginBottom: 'var(--sds-space-6)' }}>
-          <div style={{ display: 'flex', gap: 'var(--sds-space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span className="sds-seclead__meta">Status</span>
-            {PROJECT_STATUSES.map((s) => (
-              <Link key={s.label} className={`sds-chip${(pstatus || null) === s.value ? ' sds-chip--active' : ''}`} href={chipHref(s.value)} scroll={false}>
-                {s.label}
-              </Link>
-            ))}
-          </div>
+        <div className="rd-filterrow">
+          <span className="rd-label">Status</span>
+          {PROJECT_STATUSES.map((s) => (
+            <Link key={s.label} className={`sds-chip${(pstatus || null) === s.value ? ' sds-chip--active' : ''}`} href={chipHref(s.value)} scroll={false}>
+              {s.label}
+            </Link>
+          ))}
         </div>
       )}
 
-      {/* Lineage hierarchy */}
-      <div className="sds-pcol">
-        {topLevel.length ? (
-          topLevel.map((p) => {
-            const kids = childrenOf.get(pId(p)) || []
-            return (
-              <React.Fragment key={p.id}>
-                <ProjectCard p={p} />
-                {kids.length > 0 && (
-                  <>
-                    <div className="sds-subhead">Integrated apps ↓</div>
-                    {kids.map((c) => {
-                      const clast = lastActiveByProject.get(pId(c))
-                      return (
-                        // A div, not an <a>: the row carries two destinations — the
-                        // profile and (when set) the subproject's own site — and an
-                        // anchor can't be nested inside an anchor.
-                        <div key={c.id} className="sds-childrow">
-                          <a className="sds-cm-name" href={projHref(pId(c))} style={{ color: 'inherit', textDecoration: 'none' }}>
-                            {c.name}
-                          </a>
-                          {c.lineage && <span className="sds-lchip">{c.lineage}</span>}
-                          <span className="sds-cm-note">↳ in <span className="repo">{p.name}</span></span>
-                          {/* Same labels as the card + profile header, for consistency
-                              across all three surfaces. Reuses .sds-cm-note (mono 10.5px
-                              muted, with .repo in primary) — the exact treatment already
-                              used by the "in <parent>" note, so no new CSS.
-                              ⚠ These MUST stay ahead of .sds-cm-date, which has
-                              margin-left:auto and pins itself + "Open full card" to the
-                              right edge; anything after it joins that right-hand group. */}
-                          {c.projectLeader && (
-                            <span className="sds-cm-note">
-                              Project leader <span className="repo">{c.projectLeader}</span>
-                            </span>
-                          )}
-                          {c.sarapisRole && (
-                            <span className="sds-cm-note">
-                              Sarapis role <span className="repo">{c.sarapisRole}</span>
-                            </span>
-                          )}
-                          {c.site && (
-                            <a
-                              className="sds-psite"
-                              style={{ margin: 0 }}
-                              href={/^https?:\/\//.test(c.site) ? c.site : `https://${c.site}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              ↗ {c.site.replace(/^https?:\/\//, '')}
-                            </a>
-                          )}
-                          <span className="sds-cm-date">{clast ? fmtMonthYear(clast) : (c.status || '')}</span>
-                          <a className="sds-cm-open" href={projHref(pId(c))} style={{ textDecoration: 'none' }}>
-                            Open full card →
-                          </a>
-                        </div>
-                      )
-                    })}
-                  </>
-                )}
-              </React.Fragment>
-            )
-          })
-        ) : (
-          <div className="sds-empty">No projects in this region{pstatus ? ` with status “${pstatus}”` : ''} yet.</div>
-        )}
-      </div>
+      {cards.length ? (
+        <div className="rd-pgrid">
+          {cards.map((c) => (
+            <ProjectCard key={c.id} p={c} />
+          ))}
+        </div>
+      ) : (
+        <div className="sds-empty" style={{ marginTop: 28 }}>
+          No projects in this region{pstatus ? ` with status “${pstatus}”` : ''} yet.
+        </div>
+      )}
     </section>
   )
 }

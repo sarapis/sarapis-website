@@ -66,6 +66,21 @@ export const Projects: CollectionConfig = {
       admin: { description: 'Lineage role. Children nest under their flagship parent.' },
     },
     {
+      name: 'childLabel',
+      type: 'select',
+      label: 'Children are called',
+      defaultValue: 'subprojects',
+      options: [
+        { label: 'Subprojects', value: 'subprojects' },
+        { label: 'Features', value: 'features' },
+        { label: 'Integrations', value: 'integrations' },
+      ],
+      admin: {
+        description:
+          'What this project’s children (the projects that name it as their parent) are called on the site — e.g. Databook’s are Features, WeGovNYC’s are Subprojects. Only matters for a project that has children.',
+      },
+    },
+    {
       name: 'lineage',
       type: 'text',
       admin: { description: 'Optional lineage chip, e.g. "Experiment → App → Integrated".' },

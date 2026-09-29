@@ -126,3 +126,10 @@ and post copy in a source.
 its bundle (`:root` tokens re-scoped to `.sds-single, .sds-project`) — regenerate it after any
 design-system style change, then rebuild the site. Before a "pending" re-sync, compare the local
 and remote bundle hashes; it is often already in sync.
+
+The glass-card redesign (compass background, hover-reveal cards, scroll-driven motion, floating
+"Let's talk") lives in `site/src/app/(frontend)/redesign.css` — hand-written, `rd-` prefixed, layered
+on top of the generated `home.css`, so it does **not** need regenerating. `RdShell.tsx` is the shared
+page chrome (home passes `home`); `RdCards.tsx` holds the hover-reveal card. Projects, board members and
+case studies have no image fields, so those cards show placeholder art (`Thumb`) — `cardFor` already reads
+`project.screenshot`/`heroImage` if an upload field is added later (needs a `deploy/migration-round*.sql`).

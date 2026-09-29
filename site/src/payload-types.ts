@@ -973,6 +973,10 @@ export interface Project {
    */
   role?: ('flagship' | 'child' | 'standalone') | null;
   /**
+   * What this project’s children (the projects that name it as their parent) are called on the site — e.g. Databook’s are Features, WeGovNYC’s are Subprojects. Only matters for a project that has children.
+   */
+  childLabel?: ('subprojects' | 'features' | 'integrations') | null;
+  /**
    * Optional lineage chip, e.g. "Experiment → App → Integrated".
    */
   lineage?: string | null;
@@ -1956,6 +1960,7 @@ export interface ProjectsSelect<T extends boolean = true> {
   focusArea?: T;
   region?: T;
   role?: T;
+  childLabel?: T;
   lineage?: T;
   site?: T;
   parent?: T;

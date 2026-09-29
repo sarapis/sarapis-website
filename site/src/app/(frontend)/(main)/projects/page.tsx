@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'All Projects · Sarapis',
   description:
-    'Every Sarapis project — flagships, integrated apps, and standalone tools — across New York City and the wider open-source commons, at every stage.',
+    'Every Sarapis project — flagships, the projects inside them, and standalone tools — across New York City and the wider open-source commons, at every stage.',
 }
 
 export default async function AllProjectsPage({
@@ -34,7 +34,7 @@ export default async function AllProjectsPage({
           <h1 className="sds-projhead__title">All Projects</h1>
         </div>
         <p className="sds-projhead__sum" style={{ maxWidth: '52rem' }}>
-          Everything we build and steward — flagship platforms, the integrated apps that grew out of
+          Everything we build and steward — flagship platforms, the subprojects, features and integrations that grew out of
           them, and standalone tools — at every stage, from declared to active to goal-reached.
           Hierarchy shows project lineage.
         </p>
@@ -46,7 +46,7 @@ export default async function AllProjectsPage({
         pstatus={pstatus}
         showStatusFilter
         heading="Projects"
-        metaSlot={<span className="sds-seclead__meta">Hierarchy shows project lineage</span>}
+        metaSlot={<span className="rd-meta rd-chipmeta">Tiles on each card link to what’s inside it</span>}
       />
     </div>
   )
