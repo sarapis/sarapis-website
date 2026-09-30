@@ -1,0 +1,42 @@
+# /etc/logrotate.d/sarapis — rotation for the site's cron and deploy logs.
+# Every writer reopens its log in append mode on each run (cron `>>`, deploy-site's
+# log()), so plain rename rotation is safe; no copytruncate needed.
+# Install: cp site/deploy/logrotate/sarapis /etc/logrotate.d/sarapis
+# Check:   logrotate -d /etc/logrotate.d/sarapis
+
+# Hourly GitHub sync responses (~7 KB/day of JSON summaries).
+/opt/sarapis/github-sync.log {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 root root
+}
+
+# Nightly backup job output.
+/var/log/sarapis-backup.log {
+    # /var/log is group-writable by syslog on Ubuntu; logrotate refuses it without su
+    su root syslog
+    monthly
+    rotate 12
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 root root
+}
+
+# deploy-site audit log (every request, refusals included): kept for two years.
+/var/log/sarapis-deploy.log {
+    # /var/log is group-writable by syslog on Ubuntu; logrotate refuses it without su
+    su root syslog
+    monthly
+    rotate 24
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 root root
+}
