@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { publishedOnly } from '../access/publishedOnly'
 import { authenticated } from '../access/authenticated'
+import { clearHiddenArtifacts, clearHiddenArtifactsOnDelete } from '../access/mediaRead'
 
 /**
  * KnowledgeItems — captured via the admin form or the `sarapis-kb` CLI (Phase 3).
@@ -12,6 +13,8 @@ export const KnowledgeItems: CollectionConfig = {
   slug: 'knowledge-items',
   labels: { singular: 'Knowledge Item', plural: 'Knowledge Items' },
   access: { create: authenticated, delete: authenticated, read: publishedOnly, update: authenticated },
+  // Publishing or unpublishing changes which artifacts media.read hides (access/mediaRead.ts).
+  hooks: { afterChange: [clearHiddenArtifacts], afterDelete: [clearHiddenArtifactsOnDelete] },
   admin: { useAsTitle: 'title', group: 'Activity', defaultColumns: ['title', 'kind', 'date', 'published'] },
   fields: [
     { name: 'title', type: 'text', required: true },
