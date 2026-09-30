@@ -6,7 +6,7 @@ run-tested locally: home, blog, posts, `/admin`, and media all serve correctly o
 (sharp + libsql native deps verified).
 
 ## What ships
-- **App**: `Dockerfile` → Next.js standalone server (`sarapis-site:latest`), listening on `127.0.0.1:3000`.
+- **App**: `Dockerfile` → Next.js standalone server, tagged `sarapis-site:rNN` per release, listening on `127.0.0.1:3000`.
 - **DB**: SQLite file on volume `sarapis_data` (`/app/data/sarapis.db`). Seeded from this repo's `sarapis.db` (all migrated content).
 - **Media**: 415 files / ~74 MB on volume `sarapis_media` (`/app/media`). Seeded from `public/media/`.
 - **Schema**: the app runs with `push: true`, so it reconciles the schema to the DB on boot — no separate migration step.
@@ -166,6 +166,8 @@ Do **not** simply remove the noindex and leave it serving.
   **Restore:** stop the container, then `gunzip -c sarapis-db-<stamp>.db.gz > /opt/sarapis/data/sarapis.db`,
   `chown 1001:1001` it, and, as root, `tar -xzf media-<stamp>.tar.gz -C /opt/sarapis`. It unpacks as `media/`,
   and root's tar restores the recorded owner, uid 1001 — the container's user. Start the container again.
+- **Log rotation**: `install -m 644 deploy/logrotate/sarapis /etc/logrotate.d/sarapis` rotates the sync,
+  backup and deploy logs; check it with `logrotate -d /etc/logrotate.d/sarapis`.
 - **Cert renewal**: certbot installs a renew timer automatically; confirm with `systemctl list-timers | grep certbot`.
 
 ## Redeploying after code changes

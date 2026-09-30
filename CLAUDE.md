@@ -27,6 +27,9 @@ pnpm lint                       # 0 errors expected; warnings are tolerated
 pnpm test:e2e                   # Playwright; starts `pnpm dev` on :3000
 ```
 
+CI (`.github/workflows/ci.yml`) runs tsc, lint, the int tests and the backup tests on every PR and push
+to `main`, against a fresh empty SQLite file, so a new int test must create its own fixtures.
+
 Create a local admin: `ADMIN_EMAIL=… ADMIN_PASSWORD=… pnpm payload run scripts/create-admin.ts`
 (it **resets** the password of an existing user, so both values are required).
 
