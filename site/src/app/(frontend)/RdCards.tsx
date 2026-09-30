@@ -1,7 +1,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { GitHubIcon, BookIcon } from './RdIcons'
-import { hashOf, monogram, siteHref, siteLabel } from './rd'
+import { hashOf, monogram, mediaUrl, siteHref, siteLabel } from './rd'
 import { SiteMono, SiteThumb } from './SiteMono'
 import { CardImg } from './CardImg'
 
@@ -18,17 +18,11 @@ export function Mono({ text, size = 40, className = '', site }: { text: string; 
   )
 }
 
-/** Placeholder art for items without an image: tinted glass, a faint compass mark, and the monogram (or, with `site`, the site's logo). */
+/** Placeholder for items without an image: an empty, softly tinted panel (or, with `site`, the site's logo or wordmark). */
 export function Thumb({ name, label, site }: { name: string; label?: string; site?: string | null }) {
   if (site) return <SiteThumb name={name} text={label ?? monogram(name)} site={site} />
   const h = hashOf(name, 360)
-  return (
-    <div className="rd-thumb" style={{ ['--rd-rot' as any]: `${h}deg`, ['--rd-mix' as any]: 18 + (h % 5) * 6 }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className="rd-thumb__mark" src="/sarapis-mark.svg" alt="" />
-      <span className="rd-thumb__mono">{label ?? monogram(name)}</span>
-    </div>
-  )
+  return <div className="rd-thumb" style={{ ['--rd-mix' as any]: 18 + (h % 5) * 6 }} />
 }
 
 /**
@@ -201,3 +195,48 @@ export function ProjectCard({ p }: { p: ProjectCardData }) {
     </HoverCard>
   )
 }
+
+/** Case-study card (home and /services). `c` is a Homepage caseStudies entry; `post` the post it links to (for its image). */
+export function CaseStudyCard({ c, post, serviceTitle }: { c: any; post?: any; serviceTitle?: string | null }) {
+  const href = c.href && c.href !== '#' ? c.href : undefined
+  return (
+    <HoverCard
+      href={href}
+      label={c.title}
+      img={post ? mediaUrl(post.heroImage) || mediaUrl(post.meta?.image) : null}
+      alt={c.title}
+      thumb={<Thumb name={c.title} label={monogram(c.source || c.type || 'CS')} />}
+      gap={10}
+      reveal={
+        <div className="rd-stack" style={{ gap: 10, paddingTop: 6 }}>
+          <p className="rd-role">
+            {c.source && (
+              <>
+                <b>Partner:</b> {c.source}
+              </>
+            )}
+            {c.source && serviceTitle && <br />}
+            {serviceTitle && (
+              <>
+                <b>Service:</b> {serviceTitle}
+              </>
+            )}
+          </p>
+          {href && (
+            <div className="rd-postfoot rd-postfoot--end">
+              <IconLink href={href} title="Read the case study" fill>
+                →
+              </IconLink>
+            </div>
+          )}
+        </div>
+      }
+    >
+      <span className="sds-tag">{c.type}</span>
+      <h3 className="rd-cardtitle rd-cardtitle--post">{c.title}</h3>
+    </HoverCard>
+  )
+}
+
+/** slug of the post a case study links to (`/posts/<slug>`), if any */
+export const caseStudySlug = (c: any): string | undefined => String(c?.href || '').match(/^\/posts\/([^/?#]+)/)?.[1]

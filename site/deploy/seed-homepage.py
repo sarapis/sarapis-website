@@ -50,7 +50,7 @@ HOMEPAGE = {
         {"type": "Open Government", "source": "BetaNYC", "service": "project-facilitation", "title": "Community Board Databases (CBDBs)", "href": "/posts/developing-deploying-community-board-databases-cbdbs-with-betanyc"},
     ],
     "board": [
-        {"name": "Devin Balkind", "role": "Principal", "link": "https://devinbalkind.com",
+        {"name": "Devin Balkind", "role": "", "link": "https://devinbalkind.com",
          "bio": "Devin has spent his career applying free/libre/open-source methodologies to civil society's challenges — building software and operational tools for grassroots organizing initiatives, disaster-relief coalitions, nonprofits, and governments. He has presented on disaster response, participatory democracy, and government technology for the American Red Cross, the US Department of Defense, the NYC Mayor's Office, and the United Nations, and his writing on government technology appears in Gotham Gazette."},
         {"name": "Wendy Brawer", "role": "", "link": "http://ecocultural.info",
          "bio": "Wendy is an eco-designer and social sculptor, best known as the founder and director of Green Map System, which has engaged communities in 65 countries in mapping sustainability and social change. Formerly Designer in Residence at the Smithsonian Cooper-Hewitt National Design Museum, she works on inclusive knowledge sharing and climate resiliency across New York City."},
@@ -58,10 +58,10 @@ HOMEPAGE = {
          "bio": "Nicholas works at the intersection of energy, cleantech, and sustainability, having led the Americas for Agrion, the global business network for energy and sustainability professionals. He began his career at Pacific Gas & Electric and holds a Master's in Resource Economics & Environmental Management from Duke University."},
         {"name": "John Godfrey", "role": "", "link": "",
          "bio": "John is a corporate attorney whose work has centered on intellectual-property matters at media companies, including research on the open-source IP questions facing content-creating businesses. His pro bono practice has included representing clients in the arts."},
-        {"name": "Erik Osmond", "role": "", "link": "",
-         "bio": "Erik is a software developer who worked full-time at Sarapis through its formative months in 2010 — managing interns, developing projects, and building the organization's financial and regulatory foundations. He is an active contributor to open-source communities."},
         {"name": "Kate Nicholson", "role": "", "link": "",
          "bio": "Kate is a civic-technology organizer with deep roots in New York's civic tech and social-innovation scenes, formerly Director of Partnerships and Events at BetaNYC. She holds an MFA in Design for Social Innovation from the School of Visual Arts."},
+        {"name": "Matt Cynanom", "role": "", "link": "", "bio": ""},
+        {"name": "Chris Wong", "role": "", "link": "", "bio": ""},
     ],
     "about": {
         "lede": "Since 2010, Sarapis has helped nonprofits, community groups, and public agencies build technology they can actually own — free to run, study, share, and improve.",

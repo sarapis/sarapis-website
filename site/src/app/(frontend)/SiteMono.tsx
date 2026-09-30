@@ -150,7 +150,7 @@ export function SiteThumb({ name, text, site }: { name: string; text: string; si
       ...(st?.gradient && { backgroundImage: st.gradient, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', WebkitTextFillColor: 'transparent' }),
     }
     return (
-      <div className="rd-thumb rd-thumb--logo rd-thumb--word" style={st ? { background: st.background } : undefined}>
+      <div className="rd-thumb rd-thumb--logo rd-thumb--word"> 
         <span className="rd-wordmark">
           <span style={textStyle}>{word}</span>
         </span>
@@ -162,13 +162,6 @@ export function SiteThumb({ name, text, site }: { name: string; text: string; si
       className={`rd-thumb${ok ? ' rd-thumb--logo' : ''}${ok && light ? ' rd-thumb--knockout' : ''}`}
       style={{ ['--rd-rot' as any]: `${h}deg`, ['--rd-mix' as any]: 18 + (h % 5) * 6 }}
     >
-      {!ok && (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="rd-thumb__mark" src="/sarapis-mark.svg" alt="" />
-          <span className="rd-thumb__mono">{text}</span>
-        </>
-      )}
       {host && !failed && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
