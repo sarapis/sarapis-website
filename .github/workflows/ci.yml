@@ -1,0 +1,51 @@
+name: CI
+
+# Runs on every PR (including from forks) and on pushes to main. Uses the
+# `pull_request` event, never `pull_request_target`: fork PRs get a read-only
+# token and no secrets, and none are needed.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: site
+    env:
+      # A fresh, empty SQLite file: the int tests create the schema (dev push) and
+      # their own fixtures, so CI needs no real data and no secrets.
+      DATABASE_URI: file:./ci.db
+      PAYLOAD_SECRET: ci-only-not-a-secret
+      NEXT_PUBLIC_SERVER_URL: http://localhost:3000
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: site/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Type check
+        run: pnpm exec tsc --noEmit
+      - name: Lint (errors fail; warnings are tolerated)
+        run: pnpm lint
+      - name: Integration tests
+        run: pnpm exec vitest run
+      - name: Backup script tests
+        working-directory: .
+        run: python3 -m unittest discover -s site/deploy/backup
