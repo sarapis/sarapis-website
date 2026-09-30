@@ -6,3 +6,5 @@ export function safeEqual(a: string, b: string): boolean {
   const bb = Buffer.from(b)
   return ab.length === bb.length && timingSafeEqual(ab, bb)
 }
+
+export const ciRedTest: number = "not a number"
