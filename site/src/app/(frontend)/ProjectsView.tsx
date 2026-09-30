@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { getPayload } from 'payload'
 import configPromise from '@payload-config'
 import { ProjectCard, type ProjectCardData } from './RdCards'
-import { cardFor, loadProjectMeta } from './rdData'
+import { cardFor, loadProjectMeta, type ProjectMeta } from './rdData'
+import { cachedQuery } from '@/utilities/cachedQuery'
 
 /**
  * Shared Projects section — region chips + a mosaic of glass project cards (pinned
@@ -12,6 +13,20 @@ import { cardFor, loadProjectMeta } from './rdData'
  * out to /projects) and the /projects page (every status, with the status
  * filter). Self-contained: fetches its own data.
  */
+
+/**
+ * Every published project plus its activity meta, cached (see cachedQuery) and shared by
+ * the home page and /projects. The cache stores JSON, so the meta Maps travel as entries.
+ */
+async function loadAllProjects(): Promise<{ allProjects: any[]; meta: ProjectMeta }> {
+  const raw = await cachedQuery('projects-all', async () => {
+    const payload = await getPayload({ config: configPromise })
+    const res = await payload.find({ collection: 'projects', where: { published: { equals: true } }, sort: 'name', limit: 200, depth: 1 })
+    const meta = await loadProjectMeta(payload, (res.docs as any[]).map((p) => p.id))
+    return { projects: res.docs as any[], latest: [...meta.latest], repos: [...meta.repos], updated: [...meta.updated] }
+  })
+  return { allProjects: raw.projects, meta: { latest: new Map(raw.latest), repos: new Map(raw.repos), updated: new Map(raw.updated) } }
+}
 
 const REGIONS = [
   { key: 'all', name: 'All' },
@@ -45,16 +60,7 @@ export async function ProjectsView({
   heading: string
   metaSlot?: React.ReactNode
 }) {
-  const payload = await getPayload({ config: configPromise })
-  const projectsRes = await payload.find({
-    collection: 'projects',
-    where: { published: { equals: true } },
-    sort: 'name',
-    limit: 200,
-    depth: 1,
-  })
-  const allProjects = projectsRes.docs as any[]
-  const meta = await loadProjectMeta(payload, allProjects.map((p) => p.id))
+  const { allProjects, meta } = await loadAllProjects()
 
   const pId = (p: any) => p?.id
   const parentId = (p: any) => (p?.parent && typeof p.parent === 'object' ? p.parent.id : p.parent) ?? null

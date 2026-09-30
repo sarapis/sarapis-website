@@ -1,5 +1,6 @@
 import React from 'react'
 import { getPayload } from 'payload'
+import { cachedQuery } from '@/utilities/cachedQuery'
 import configPromise from '@payload-config'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -31,23 +32,28 @@ export default async function HomePage({
   const since = daysAgoISO
   const published = { published: { equals: true } }
 
-  const homepage = (await payload.findGlobal({ slug: 'homepage' })) as any
-  const caseStudies: any[] = Array.isArray(homepage?.caseStudies) ? homepage.caseStudies : []
-  const caseSlugs = caseStudies.map((c) => String(c.href || '').match(/^\/posts\/([^/?#]+)/)?.[1]).filter(Boolean) as string[]
+  // Cached (see cachedQuery): every anonymous request used to re-run all of these.
+  const { homepage, postsRes, casePosts, events, eventTotal, lastSynced, events30, reposActive, releases, postTotal } = await cachedQuery('home', async () => {
+    const homepage = (await payload.findGlobal({ slug: 'homepage' })) as any
+    const caseStudies: any[] = Array.isArray(homepage?.caseStudies) ? homepage.caseStudies : []
+    const caseSlugs = caseStudies.map((c) => String(c.href || '').match(/^\/posts\/([^/?#]+)/)?.[1]).filter(Boolean) as string[]
 
-  const [postsRes, casePosts, events, eventTotal, lastSynced, events30, reposActive, releases, postTotal] = await Promise.all([
-    payload.find({ collection: 'posts', where: { _status: { equals: 'published' } }, sort: '-publishedAt', limit: 12, depth: 1 }),
-    caseSlugs.length
-      ? payload.find({ collection: 'posts', where: { slug: { in: caseSlugs }, _status: { equals: 'published' } }, limit: 12, depth: 1 })
-      : Promise.resolve({ docs: [] as any[] }),
-    payload.find({ collection: 'activity-events', where: published, sort: '-occurredAt', limit: 5, depth: 0 }),
-    payload.count({ collection: 'activity-events', where: published }),
-    payload.find({ collection: 'activity-events', where: published, sort: '-updatedAt', limit: 1, depth: 0 }),
-    payload.count({ collection: 'activity-events', where: { ...published, occurredAt: { greater_than: since(30) } } }),
-    payload.count({ collection: 'repos', where: { ...published, lastPushedAt: { greater_than: since(30) } } }),
-    payload.count({ collection: 'activity-events', where: { ...published, kind: { equals: 'release' }, occurredAt: { greater_than: since(365) } } }),
-    payload.count({ collection: 'posts', where: { _status: { equals: 'published' } } }),
-  ])
+    const [postsRes, casePosts, events, eventTotal, lastSynced, events30, reposActive, releases, postTotal] = await Promise.all([
+      payload.find({ collection: 'posts', where: { _status: { equals: 'published' } }, sort: '-publishedAt', limit: 12, depth: 1 }),
+      caseSlugs.length
+        ? payload.find({ collection: 'posts', where: { slug: { in: caseSlugs }, _status: { equals: 'published' } }, limit: 12, depth: 1 })
+        : Promise.resolve({ docs: [] as any[] }),
+      payload.find({ collection: 'activity-events', where: published, sort: '-occurredAt', limit: 5, depth: 0 }),
+      payload.count({ collection: 'activity-events', where: published }),
+      payload.find({ collection: 'activity-events', where: published, sort: '-updatedAt', limit: 1, depth: 0 }),
+      payload.count({ collection: 'activity-events', where: { ...published, occurredAt: { greater_than: since(30) } } }),
+      payload.count({ collection: 'repos', where: { ...published, lastPushedAt: { greater_than: since(30) } } }),
+      payload.count({ collection: 'activity-events', where: { ...published, kind: { equals: 'release' }, occurredAt: { greater_than: since(365) } } }),
+      payload.count({ collection: 'posts', where: { _status: { equals: 'published' } } }),
+    ])
+    return { homepage, postsRes, casePosts, events, eventTotal, lastSynced, events30, reposActive, releases, postTotal }
+  })
+  const caseStudies: any[] = Array.isArray(homepage?.caseStudies) ? homepage.caseStudies : []
 
   const hero = homepage?.hero || {}
   const services: any[] = Array.isArray(homepage?.services) ? homepage.services : []

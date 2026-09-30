@@ -4,6 +4,8 @@ import path from 'path'
 import { buildConfig, PayloadRequest } from 'payload'
 import { fileURLToPath } from 'url'
 import { safeEqual } from './utilities/safeEqual'
+import type { CollectionConfig, GlobalConfig } from 'payload'
+import { revalidateFrontendAfterChange, revalidateFrontendAfterDelete, revalidateFrontendGlobal } from './hooks/revalidateFrontend'
 
 import { Categories } from './collections/Categories'
 import { Media } from './collections/Media'
@@ -32,6 +34,27 @@ import { getServerSideURL } from './utilities/getURL'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
+
+// Collections and globals whose data the cached public pages read (utilities/cachedQuery.ts).
+// A write to any of them drops that cache, so edits and sync results show up immediately.
+const FRONTEND_SOURCES = new Set(['posts', 'pages', 'projects', 'repos', 'activity-events', 'knowledge-items', 'tasks', 'categories', 'media', 'homepage'])
+
+function withFrontendRevalidation(c: CollectionConfig): CollectionConfig {
+  if (!FRONTEND_SOURCES.has(c.slug)) return c
+  return {
+    ...c,
+    hooks: {
+      ...c.hooks,
+      afterChange: [...(c.hooks?.afterChange || []), revalidateFrontendAfterChange],
+      afterDelete: [...(c.hooks?.afterDelete || []), revalidateFrontendAfterDelete],
+    },
+  }
+}
+
+function withFrontendRevalidationGlobal(g: GlobalConfig): GlobalConfig {
+  if (!FRONTEND_SOURCES.has(g.slug)) return g
+  return { ...g, hooks: { ...g.hooks, afterChange: [...(g.hooks?.afterChange || []), revalidateFrontendGlobal] } }
+}
 
 export default buildConfig({
   admin: {
@@ -83,7 +106,9 @@ export default buildConfig({
     push: process.env.NODE_ENV !== 'production',
     migrationDir: path.resolve(dirname, 'migrations'),
   }),
-  collections: [Sites, Pages, Posts, Events, NewsItems, Media, Categories, Tags, Users, Projects, Repos, ActivityEvents, KnowledgeItems, Tasks, ContactSubmissions, EmailSignups, CampaignSignups, CampaignEndorsements],
+  collections: [Sites, Pages, Posts, Events, NewsItems, Media, Categories, Tags, Users, Projects, Repos, ActivityEvents, KnowledgeItems, Tasks, ContactSubmissions, EmailSignups, CampaignSignups, CampaignEndorsements].map(
+    withFrontendRevalidation,
+  ),
   // Brand front-ends call this API cross-origin (e.g. wegov.nyc campaign forms).
   // Add brand domains here (+ extend via CORS_ORIGINS, comma-separated).
   //
@@ -115,7 +140,7 @@ export default buildConfig({
     'https://www.opensource.nyc',
     ...(process.env.CORS_ORIGINS?.split(',').map((o) => o.trim()) ?? []),
   ].filter(Boolean),
-  globals: [Header, Footer, Homepage],
+  globals: [Header, Footer, Homepage].map(withFrontendRevalidationGlobal),
   plugins,
   secret: process.env.PAYLOAD_SECRET,
   sharp,

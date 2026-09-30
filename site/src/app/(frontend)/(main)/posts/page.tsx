@@ -1,5 +1,6 @@
 import React from 'react'
 import Link from 'next/link'
+import { cachedQuery } from '@/utilities/cachedQuery'
 import { getPayload } from 'payload'
 import type { Where } from 'payload'
 import configPromise from '@payload-config'
@@ -58,11 +59,15 @@ export default async function PostsPage({
 
   const payload = await getPayload({ config: configPromise })
 
-  const [postsRes, knowledgeRes, eventsRes] = await Promise.all([
-    payload.find({ collection: 'posts', where: { _status: { equals: 'published' } }, sort: '-publishedAt', limit: 300, depth: 1 }),
-    payload.find({ collection: 'knowledge-items', where: { published: { equals: true } }, sort: '-date', limit: 300, depth: 1 }),
-    payload.find({ collection: 'activity-events', where: { published: { equals: true } } as Where, sort: '-occurredAt', limit: 500, depth: 1 }),
-  ])
+  // One cached feed for every tag/page combination (see cachedQuery): filtering and
+  // paging happen below, in memory.
+  const [postsRes, knowledgeRes, eventsRes] = await cachedQuery('posts-feed', () =>
+    Promise.all([
+      payload.find({ collection: 'posts', where: { _status: { equals: 'published' } }, sort: '-publishedAt', limit: 300, depth: 1 }),
+      payload.find({ collection: 'knowledge-items', where: { published: { equals: true } }, sort: '-date', limit: 300, depth: 1 }),
+      payload.find({ collection: 'activity-events', where: { published: { equals: true } } as Where, sort: '-occurredAt', limit: 500, depth: 1 }),
+    ]),
+  )
 
   const items: Item[] = []
 

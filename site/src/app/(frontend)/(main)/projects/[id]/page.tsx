@@ -8,7 +8,8 @@ import type { Metadata } from 'next'
 import { Mono, Thumb, ProjectCard } from '../../../RdCards'
 import { GitHubIcon } from '../../../RdIcons'
 import { CardImg } from '../../../CardImg'
-import { cardFor, loadProjectMeta, projectEventsWhere } from '../../../rdData'
+import { cardFor, loadProjectMeta, projectEventsWhere, type ProjectMeta } from '../../../rdData'
+import { cachedQuery } from '@/utilities/cachedQuery'
 import { EVENT_COLOR, childLabel, ago, fmtDay, fmtFull, monogram, repoOrg, siteHref, siteLabel } from '../../../rd'
 
 export const dynamic = 'force-dynamic'
@@ -52,33 +53,41 @@ export default async function ProjectPage({
 
   const payload = await getPayload({ config: configPromise })
 
-  let project: any
-  try {
-    project = await payload.findByID({ collection: 'projects', id, depth: 1 })
-  } catch {
-    notFound()
-  }
-  // Only `published: true` is public, as in the access model: null/unset is not published.
-  if (!project || project.published !== true) notFound()
+  // Cached per project and page numbers (see cachedQuery). notFound() throws, so it stays
+  // outside the cached loader, which returns null for a missing or unpublished project.
+  const data = await cachedQuery(`project:${id}:${ap}:${kp}:${rp}`, async () => {
+    let project: any
+    try {
+      project = await payload.findByID({ collection: 'projects', id, depth: 1 })
+    } catch {
+      return null
+    }
+    // Only `published: true` is public, as in the access model: null/unset is not published.
+    if (!project || project.published !== true) return null
+    const pid = project.id
+    const projWhere: Where = { project: { equals: pid } }
+    // Events count for this project if assigned to it or, unassigned, from one of its repos.
+    const ownRepos = await payload.find({ collection: 'repos', where: { published: { equals: true }, ...projWhere }, limit: 1000, depth: 0, pagination: false })
+    const eventsWhere = projectEventsWhere(pid, (ownRepos.docs as any[]).map((r) => r.fullName))
+    const [children, pinKnow, pinEvents, pinTasks, actRes, knowRes, repoRes] = await Promise.all([
+      payload.find({ collection: 'projects', where: { published: { equals: true }, parent: { equals: pid } }, sort: 'name', limit: 50, depth: 0 }),
+      payload.find({ collection: 'knowledge-items', where: { published: { equals: true }, pinned: { equals: true }, ...projWhere }, sort: '-date', limit: 50, depth: 0 }),
+      payload.find({ collection: 'activity-events', where: { and: [eventsWhere, { pinned: { equals: true } }] }, sort: '-occurredAt', limit: 50, depth: 0 }),
+      payload.find({ collection: 'tasks', where: { publishToActivity: { equals: true }, pinned: { equals: true }, ...projWhere }, sort: '-updatedAt', limit: 50, depth: 0 }),
+      payload.find({ collection: 'activity-events', where: eventsWhere, sort: '-occurredAt', page: ap, limit: ACT_PER, depth: 0 }),
+      payload.find({ collection: 'knowledge-items', where: { published: { equals: true }, ...projWhere }, sort: '-date', page: kp, limit: KNOW_PER, depth: 0 }),
+      payload.find({ collection: 'repos', where: { published: { equals: true }, ...projWhere }, sort: '-lastPushedAt', page: rp, limit: REPO_PER, depth: 0 }),
+    ])
+    const m = await loadProjectMeta(payload, [pid, ...(children.docs as any[]).map((k) => k.id)])
+    const meta = { latest: [...m.latest], repos: [...m.repos], updated: [...m.updated] }
+    return { project, children, pinKnow, pinEvents, pinTasks, actRes, knowRes, repoRes, meta }
+  })
+  if (!data) notFound()
+  const { project, children, pinKnow, pinEvents, pinTasks, actRes, knowRes, repoRes } = data
   const pid = project.id
   const region = project.region === 'global' ? 'global' : 'nyc'
-
-  const projWhere: Where = { project: { equals: pid } }
-  // Events count for this project if assigned to it or if they come from one of its repos.
-  const ownRepos = await payload.find({ collection: 'repos', where: { published: { equals: true }, ...projWhere }, limit: 1000, depth: 0, pagination: false })
-  const eventsWhere = projectEventsWhere(pid, (ownRepos.docs as any[]).map((r) => r.fullName))
-  const [children, pinKnow, pinEvents, pinTasks, actRes, knowRes, repoRes] = await Promise.all([
-    payload.find({ collection: 'projects', where: { published: { equals: true }, parent: { equals: pid } }, sort: 'name', limit: 50, depth: 0 }),
-    payload.find({ collection: 'knowledge-items', where: { published: { equals: true }, pinned: { equals: true }, ...projWhere }, sort: '-date', limit: 50, depth: 0 }),
-    payload.find({ collection: 'activity-events', where: { and: [eventsWhere, { pinned: { equals: true } }] }, sort: '-occurredAt', limit: 50, depth: 0 }),
-    payload.find({ collection: 'tasks', where: { publishToActivity: { equals: true }, pinned: { equals: true }, ...projWhere }, sort: '-updatedAt', limit: 50, depth: 0 }),
-    payload.find({ collection: 'activity-events', where: eventsWhere, sort: '-occurredAt', page: ap, limit: ACT_PER, depth: 0 }),
-    payload.find({ collection: 'knowledge-items', where: { published: { equals: true }, ...projWhere }, sort: '-date', page: kp, limit: KNOW_PER, depth: 0 }),
-    payload.find({ collection: 'repos', where: { published: { equals: true }, ...projWhere }, sort: '-lastPushedAt', page: rp, limit: REPO_PER, depth: 0 }),
-  ])
-
   const kids = children.docs as any[]
-  const meta = await loadProjectMeta(payload, [pid, ...kids.map((k) => k.id)])
+  const meta: ProjectMeta = { latest: new Map(data.meta.latest), repos: new Map(data.meta.repos), updated: new Map(data.meta.updated) }
 
   // ---- unified pinned deck ----
   type Pin = { key: string; tag: string; title: string; meta: string; href: string; external?: boolean }
