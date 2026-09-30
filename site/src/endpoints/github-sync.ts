@@ -96,6 +96,7 @@ type GhRepo = {
   created_at: string | null
   default_branch: string
   archived: boolean
+  fork?: boolean
   owner: { login: string }
 }
 export type GhCommit = {
@@ -273,6 +274,21 @@ export function commitWindowStart(
     : new Date(now - ACTIVE_WINDOW_DAYS * 86400000).toISOString().slice(0, 10)
   if (backfillSince && backfillSince < day) day = backfillSince
   return `${day}T00:00:00Z`
+}
+
+/**
+ * A fork's commit window never starts before the fork was created. Everything older is
+ * history it inherited from its upstream, which is synced under the upstream's name; a
+ * fork's own work is committed after it was forked. Without this a fork of a synced repo
+ * (e.g. Civic-Tech-Field-Guide/ctfg-build) re-ingested the shared history as duplicate
+ * commit-day events, because `externalId` embeds the repo name.
+ */
+export function forkAwareSince(since: string, repo: { fork?: boolean; created_at: string | null }): string {
+  if (!repo.fork || !repo.created_at) return since
+  const forkedAt = new Date(repo.created_at)
+  if (Number.isNaN(forkedAt.getTime())) return since
+  const forked = forkedAt.toISOString().replace(/\.\d{3}Z$/, 'Z')
+  return forked > since ? forked : since
 }
 
 /**
@@ -585,10 +601,13 @@ export async function syncGithub({
           depth: 0,
           overrideAccess: true,
         })
-        const since = commitWindowStart(
-          (newestCommit.docs[0] as unknown as { occurredAt?: string } | undefined)?.occurredAt,
-          backfillSince,
-          Date.now(),
+        const since = forkAwareSince(
+          commitWindowStart(
+            (newestCommit.docs[0] as unknown as { occurredAt?: string } | undefined)?.occurredAt,
+            backfillSince,
+            Date.now(),
+          ),
+          repo,
         )
         const commitPages = backfillSince ? COMMIT_MAX_PAGES_BACKFILL : COMMIT_MAX_PAGES
 

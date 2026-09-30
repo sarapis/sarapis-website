@@ -3,7 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest'
 
-import { syncOutcome, commitWindowStart, parseBackfillSince } from '@/endpoints/github-sync'
+import { syncOutcome, commitWindowStart, parseBackfillSince, forkAwareSince } from '@/endpoints/github-sync'
 import { recordSyncRun, syncHealth, resetSyncHealth, STALE_AFTER_MS } from '@/endpoints/github-sync-health'
 
 const NOW = Date.parse('2026-09-24T16:00:00Z')
@@ -30,6 +30,22 @@ describe('commitWindowStart', () => {
   })
   it('but never narrows it', () => {
     expect(commitWindowStart('2026-09-18T12:00:00.000Z', '2026-09-20', NOW)).toBe('2026-09-18T00:00:00Z')
+  })
+})
+
+describe('forkAwareSince (L1: forks must not re-ingest inherited history)', () => {
+  const since = '2025-08-20T00:00:00Z'
+  it('starts a fork at its creation, so inherited commits are never fetched', () => {
+    expect(forkAwareSince(since, { fork: true, created_at: '2026-09-15T14:03:07Z' })).toBe('2026-09-15T14:03:07Z')
+  })
+  it('keeps a later window for an old fork', () => {
+    expect(forkAwareSince('2026-09-20T00:00:00Z', { fork: true, created_at: '2026-01-01T00:00:00Z' })).toBe('2026-09-20T00:00:00Z')
+  })
+  it('leaves non-forks, and forks with no or bad dates, alone', () => {
+    expect(forkAwareSince(since, { fork: false, created_at: '2026-09-15T14:03:07Z' })).toBe(since)
+    expect(forkAwareSince(since, { created_at: '2026-09-15T14:03:07Z' })).toBe(since)
+    expect(forkAwareSince(since, { fork: true, created_at: null })).toBe(since)
+    expect(forkAwareSince(since, { fork: true, created_at: 'garbage' })).toBe(since)
   })
 })
 

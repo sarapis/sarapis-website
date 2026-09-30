@@ -13,6 +13,8 @@ import { syncGithub } from '@/endpoints/github-sync'
  *   rtest-ok/a   — pulls fetch fails (500); two commit-days need summaries
  *   rtest-ok/b   — returns exactly 10 pages x 100 commits, hitting the cap:
  *                  600 on 2026-09-02, then 400 on 2026-09-01 (the cut day)
+ *   rtest-ok/c   — a FORK created 2026-09-05; its API honours `since` like GitHub's,
+ *                  and holds one inherited commit (09-01) and one of its own (09-08)
  *   Gemini       — answers 503
  */
 const OWNER = 'rtest-ok'
@@ -25,7 +27,7 @@ const savedEnv: Record<string, string | undefined> = {}
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...headers } })
 
-const repo = (name: string) => ({
+const repo = (name: string, extra: Record<string, unknown> = {}) => ({
   full_name: `${OWNER}/${name}`,
   html_url: `https://github.com/${OWNER}/${name}`,
   description: null,
@@ -34,6 +36,7 @@ const repo = (name: string) => ({
   default_branch: 'main',
   archived: false,
   owner: { login: OWNER },
+  ...extra,
 })
 
 const commit = (day: string, i: number) => ({
@@ -65,7 +68,13 @@ function fakeFetch(input: string | URL | Request, init?: RequestInit): Promise<R
   if (url.hostname !== 'api.github.com') throw new Error(`unexpected fetch: ${url.href}`)
 
   if (p === '/orgs/rtest-dead/repos') return Promise.resolve(json({ message: 'Bad credentials' }, 401))
-  if (p === `/orgs/${OWNER}/repos`) return Promise.resolve(json(page === 1 ? [repo('a'), repo('b')] : []))
+  if (p === `/orgs/${OWNER}/repos`)
+    return Promise.resolve(json(page === 1 ? [repo('a'), repo('b'), repo('c', { fork: true, created_at: '2026-09-05T00:00:00Z' })] : []))
+  if (p === `/repos/${OWNER}/c/commits`) {
+    const since = url.searchParams.get('since') || ''
+    const all = [commit('2026-09-08', 1), commit('2026-09-01', 2)]
+    return Promise.resolve(json(page === 1 ? all.filter((c) => c.commit.committer.date >= since) : []))
+  }
 
   if (p === `/repos/${OWNER}/a/commits`)
     return Promise.resolve(json(page === 1 ? [commit('2026-09-10', 1), commit('2026-09-11', 2)] : []))
@@ -147,5 +156,16 @@ describe('github-sync reports its failures', () => {
     expect(geminiCalls.length).toBeGreaterThan(0)
     for (const u of geminiCalls) expect(u).not.toContain('test-key')
     expect(geminiKeyHeaders).toEqual(['test-key'])
+  })
+
+  it('L1: a fork gets its own commits only, not the history it inherited', async () => {
+    const events = await payload.find({
+      collection: 'activity-events',
+      where: { and: [{ repoFullName: { equals: `${OWNER}/c` } }, { kind: { equals: 'commit' } }] },
+      overrideAccess: true,
+      depth: 0,
+    })
+    expect(events.docs.map((d) => String(d.occurredAt).slice(0, 10))).toEqual(['2026-09-08'])
+    expect(calls.find((u) => u.includes(`/repos/${OWNER}/c/commits`))).toContain('since=2026-09-05T00:00:00Z')
   })
 })
