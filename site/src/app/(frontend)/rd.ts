@@ -79,12 +79,13 @@ export const WORDMARK_STYLES: Record<string, WordmarkStyle> = {
   'wegov.nyc': { background: '#1d2e50', gradient: 'linear-gradient(135deg, #7bb4e8, #d4a843)', fontFamily: 'var(--font-dm-serif), Georgia, serif', fontWeight: 400, letterSpacing: '-.5px', size: 1.25 },
 }
 
-/** Normalised "host/path" of a project's `site` (no scheme, no trailing slash) — the key the wordmark route takes. */
+/** Normalised "host/path" of a project's `site` (no scheme, no `www.`, no trailing slash) — the key the wordmark route takes. */
 export function siteKey(site?: string | null): string | null {
   if (!site) return null
   try {
     const u = new URL(/^https?:\/\//.test(site) ? site : `https://${site}`)
-    return (u.hostname + u.pathname).toLowerCase().replace(/\/+$/, '')
+    // `www.` is dropped so www.example.org and example.org share one key
+    return (u.hostname.replace(/^www\./i, '') + u.pathname).toLowerCase().replace(/\/+$/, '')
   } catch {
     return null
   }

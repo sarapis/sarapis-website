@@ -160,7 +160,7 @@ export default async function HomePage({
                 {e.repoFullName && <span className="rd-act__repo">{repoShort(e.repoFullName)} ↗</span>}
               </a>
             ))}
-            <Link className="rd-act__more" href="/posts">
+            <Link className="rd-act__more" href="/activity">
               All {eventTotal.totalDocs} events →
             </Link>
           </div>

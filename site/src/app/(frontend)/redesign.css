@@ -454,3 +454,11 @@ a.rd-meta--link, .rd-meta--link { color: var(--sds-primary); }
   .rd-totop { right: 14px; bottom: 14px; }
   .rd-actions__last { margin-left: 0; }
 }
+
+/* ── Reduced motion ─────────────────────────────────────────────────────────── */
+/* The scroll-driven animations are opt-in above; these three run everywhere else, so
+   switch them off explicitly for people who ask for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  :root:has(.rd-shell) { scroll-behavior: auto; }
+  .rd-syncdot, .rd-talk__dot { animation: none; }
+}

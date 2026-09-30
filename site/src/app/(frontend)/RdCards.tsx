@@ -60,7 +60,9 @@ export function HoverCard({
   reveal?: React.ReactNode
 }) {
   return (
-    <article className={`rd-glass rd-lift rd-rise rd-revealcard ${className}`}>
+    // With no link inside, a card with hidden reveal content (a board bio) is made focusable
+    // itself, so keyboard users can open it via :focus-within.
+    <article className={`rd-glass rd-lift rd-rise rd-revealcard ${className}`} tabIndex={!href && reveal ? 0 : undefined}>
       {href && (href.startsWith('/') ? (
         <Link className="rd-cardlink" href={href} aria-label={label} />
       ) : (

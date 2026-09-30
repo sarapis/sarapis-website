@@ -1,4 +1,4 @@
-import { allowedSites, fetchWithTimeout, isPrivateHost } from '../../siteAssets'
+import { allowedSites, isPrivateHost, safeFetch } from '../../siteAssets'
 
 /**
  * GET /next/wordmark?u=<host/path of a project's site> — the text of the site's
@@ -34,7 +34,7 @@ function brandText(html: string): string | null {
 
 async function findText(key: string): Promise<Entry> {
   try {
-    const res = await fetchWithTimeout(`https://${key}`)
+    const res = await safeFetch(`https://${key}`)
     if (res.ok && (res.headers.get('content-type') || '').includes('html')) {
       return { at: Date.now(), text: brandText((await res.text()).slice(0, 300_000)) }
     }

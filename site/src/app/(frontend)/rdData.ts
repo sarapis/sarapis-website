@@ -14,17 +14,27 @@ export type ProjectMeta = {
 }
 
 /**
- * Where-clause for a project's activity events: those assigned to it directly, plus
- * any whose repo belongs to the project (synced events often arrive with no project set).
+ * Where-clause for a project's activity events: those assigned to it, plus unassigned
+ * ones whose repo belongs to it (synced events often arrive with no project set). An
+ * event assigned to another project is NOT pulled in by its repo — an editor's explicit
+ * assignment wins — so the profile page and the cards always agree on ownership.
  */
 export function projectEventsWhere(pid: number, repoNames: string[]): Where {
   return {
     published: { equals: true },
-    or: [{ project: { equals: pid } }, ...(repoNames.length ? [{ repoFullName: { in: repoNames } }] : [])],
+    or: [
+      { project: { equals: pid } },
+      ...(repoNames.length ? [{ and: [{ repoFullName: { in: repoNames } }, { project: { exists: false } }] }] : []),
+    ],
   }
 }
 
-/** Latest published activity event and repos per project, for the given project ids. */
+/**
+ * Latest published activity event, repos and last-updated date per project. One small
+ * `limit: 1` query per project for the latest event and knowledge item, rather than one
+ * capped query across all projects: a capped query silently dropped quiet projects once
+ * the total passed the cap.
+ */
 export async function loadProjectMeta(payload: Payload, ids: number[]): Promise<ProjectMeta> {
   const latest = new Map<number, any>()
   const repos = new Map<number, any[]>()
@@ -35,50 +45,37 @@ export async function loadProjectMeta(payload: Payload, ids: number[]): Promise<
     collection: 'repos',
     where: { published: { equals: true }, project: { in: ids } },
     sort: '-lastPushedAt',
-    limit: 1000,
     depth: 0,
+    pagination: false,
   })
-  const projectOfRepo = new Map<string, number>()
   for (const r of rp.docs as any[]) {
     const pid = idOf(r.project)
     if (pid == null) continue
     if (!repos.has(pid)) repos.set(pid, [])
     repos.get(pid)!.push(r)
-    projectOfRepo.set(r.fullName, pid)
   }
 
-  const [ev, kn] = await Promise.all([
-    payload.find({
-      collection: 'activity-events',
-      where: {
-        published: { equals: true },
-        or: [{ project: { in: ids } }, ...(projectOfRepo.size ? [{ repoFullName: { in: [...projectOfRepo.keys()] } }] : [])],
-      },
-      sort: '-occurredAt',
-      limit: 1000,
-      depth: 0,
-    }),
-    payload.find({
-      collection: 'knowledge-items',
-      where: { published: { equals: true }, project: { in: ids } },
-      sort: '-date',
-      limit: 1000,
-      depth: 0,
-    }),
-  ])
-  const bump = (pid: any, d?: string | null) => {
-    if (pid == null || !d) return
+  const bump = (pid: number, d?: string | null) => {
+    if (!d) return
     const cur = updated.get(pid)
     if (!cur || d > cur) updated.set(pid, d)
   }
-  for (const k of kn.docs as any[]) bump(idOf(k.project), k.date)
-  for (const e of ev.docs as any[]) {
-    // an event assigned to a project wins; otherwise it belongs to whichever project owns its repo
-    const pid = idOf(e.project) ?? projectOfRepo.get(e.repoFullName)
-    if (pid == null) continue
-    if (!latest.has(pid)) latest.set(pid, e)
-    bump(pid, e.occurredAt)
-  }
+  await Promise.all(
+    ids.map(async (pid) => {
+      const names = (repos.get(pid) || []).map((r) => r.fullName)
+      const [ev, kn] = await Promise.all([
+        payload.find({ collection: 'activity-events', where: projectEventsWhere(pid, names), sort: '-occurredAt', limit: 1, depth: 0 }),
+        payload.find({ collection: 'knowledge-items', where: { published: { equals: true }, project: { equals: pid } }, sort: '-date', limit: 1, depth: 0 }),
+      ])
+      const e = ev.docs[0] as any
+      const k = kn.docs[0] as any
+      if (e) {
+        latest.set(pid, e)
+        bump(pid, e.occurredAt)
+      }
+      if (k) bump(pid, k.date)
+    }),
+  )
   return { latest, repos, updated }
 }
 

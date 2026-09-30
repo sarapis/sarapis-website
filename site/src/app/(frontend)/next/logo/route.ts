@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { allowedSites, fetchWithTimeout, isPrivateHost, tagAttr } from '../../siteAssets'
+import { allowedSites, isPrivateHost, safeFetch, tagAttr } from '../../siteAssets'
 
 /**
  * GET /next/logo?u=<host/path of a project's site> — the project site's own logo, for the
@@ -118,7 +118,7 @@ async function findLogo(key: string): Promise<Entry> {
   const base = `https://${key}`
   let candidates = [new URL('/favicon.ico', base).toString()]
   try {
-    const res = await fetchWithTimeout(base)
+    const res = await safeFetch(base)
     if (res.ok && (res.headers.get('content-type') || '').includes('html')) {
       const html = (await res.text()).slice(0, 300_000)
       const at = res.url || base
@@ -131,7 +131,7 @@ async function findLogo(key: string): Promise<Entry> {
     try {
       const u = new URL(url)
       if (!/^https?:$/.test(u.protocol) || isPrivateHost(u.hostname)) continue
-      const r = await fetchWithTimeout(url, 6000)
+      const r = await safeFetch(url, { timeoutMs: 6000, maxBytes: MAX_BYTES })
       const type = (r.headers.get('content-type') || '').split(';')[0].trim().toLowerCase()
       if (!r.ok || !/^image\/(png|jpeg|gif|webp|svg\+xml|x-icon|vnd\.microsoft\.icon|avif)$/.test(type)) continue
       const body = await r.arrayBuffer()

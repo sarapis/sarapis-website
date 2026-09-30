@@ -26,8 +26,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params
   try {
     const payload = await getPayload({ config: configPromise })
-    const p = await payload.findByID({ collection: 'projects', id, depth: 0 })
-    return { title: `${(p as any)?.name || 'Project'} · Sarapis`, description: (p as any)?.summary || undefined }
+    const p = (await payload.findByID({ collection: 'projects', id, depth: 0 })) as any
+    // The Local API bypasses access control: an unpublished project's name and summary
+    // must not reach the <title> of its 404.
+    if (p?.published !== true) return { title: 'Project · Sarapis' }
+    return { title: `${p.name || 'Project'} · Sarapis`, description: p.summary || undefined }
   } catch {
     return { title: 'Project · Sarapis' }
   }
@@ -55,7 +58,8 @@ export default async function ProjectPage({
   } catch {
     notFound()
   }
-  if (!project || project.published === false) notFound()
+  // Only `published: true` is public, as in the access model: null/unset is not published.
+  if (!project || project.published !== true) notFound()
   const pid = project.id
   const region = project.region === 'global' ? 'global' : 'nyc'
 
@@ -122,7 +126,8 @@ export default async function ProjectPage({
   }
 
   const self = cardFor(project, kids, meta)
-  const parent = project.parent && typeof project.parent === 'object' ? project.parent : null
+  // An unpublished parent is not shown: its name would leak, and its link would 404.
+  const parent = project.parent && typeof project.parent === 'object' && project.parent.published === true ? project.parent : null
   const lastEvent = meta.latest.get(pid) || [...kids.map((k) => meta.latest.get(k.id))].filter(Boolean).sort((a: any, b: any) => String(b.occurredAt).localeCompare(String(a.occurredAt)))[0]
   const org = repoOrg([...(meta.repos.get(pid) || []), ...kids.flatMap((k) => meta.repos.get(k.id) || [])][0]?.fullName)
   const shot = self.img

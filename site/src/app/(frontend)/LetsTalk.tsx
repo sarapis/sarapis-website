@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 /**
  * Floating "Let's talk" contact panel, on every page. Collapsed it is a pill with a
@@ -12,6 +12,18 @@ import React, { useEffect, useState } from 'react'
 export function LetsTalk() {
   const [open, setOpen] = useState(false)
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const panelRef = useRef<HTMLElement>(null)
+  const pillRef = useRef<HTMLButtonElement>(null)
+  const wasOpen = useRef(false)
+
+  // The pill and the panel replace each other, so focus must be moved by hand: into the
+  // panel when it opens (it renders after the footer, so tabbing there would cross the
+  // whole page), and back to the pill when it closes.
+  useEffect(() => {
+    if (open) (panelRef.current?.querySelector<HTMLElement>('input[name=name]') ?? panelRef.current?.querySelector<HTMLElement>('.rd-talk__x'))?.focus()
+    else if (wasOpen.current) pillRef.current?.focus()
+    wasOpen.current = open
+  }, [open])
 
   useEffect(() => {
     const fromHash = () => {
@@ -67,10 +79,10 @@ export function LetsTalk() {
   return (
     <div className="rd-talk">
       {open ? (
-        <section className="rd-talk__panel" aria-label="Contact Sarapis">
+        <section className="rd-talk__panel" id="rd-talk-panel" aria-label="Contact Sarapis" ref={panelRef}>
           <div className="rd-talk__top">
             <h2 className="rd-talk__title">Building something for the public good?</h2>
-            <button type="button" className="rd-talk__x" aria-label="Collapse" onClick={() => setOpen(false)}>
+            <button type="button" className="rd-talk__x" aria-label="Collapse" aria-expanded="true" aria-controls="rd-talk-panel" onClick={() => setOpen(false)}>
               –
             </button>
           </div>
@@ -116,7 +128,7 @@ export function LetsTalk() {
           )}
         </section>
       ) : (
-        <button type="button" className="sds-button sds-button--primary sds-button--md rd-talk__btn" aria-expanded="false" onClick={() => setOpen(true)}>
+        <button type="button" ref={pillRef} className="sds-button sds-button--primary sds-button--md rd-talk__btn" aria-expanded="false" onClick={() => setOpen(true)}>
           <span className="rd-talk__dot" />
           Let’s talk
         </button>
