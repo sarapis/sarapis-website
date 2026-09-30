@@ -160,7 +160,8 @@ export default async function HomePage({
                 {e.repoFullName && <span className="rd-act__repo">{repoShort(e.repoFullName)} ↗</span>}
               </a>
             ))}
-            <Link className="rd-act__more" href="/activity">
+            {/* /posts is the unified feed and includes activity events; /activity only redirects home */}
+            <Link className="rd-act__more" href="/posts">
               All {eventTotal.totalDocs} events →
             </Link>
           </div>
