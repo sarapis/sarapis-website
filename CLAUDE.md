@@ -133,6 +133,6 @@ and remote bundle hashes; it is often already in sync.
 The glass-card redesign (compass background, hover-reveal cards, scroll-driven motion, floating
 "Let's talk") lives in `site/src/app/(frontend)/redesign.css` — hand-written, `rd-` prefixed, layered
 on top of the generated `home.css`, so it does **not** need regenerating. `RdShell.tsx` is the shared
-page chrome (home passes `home`); `RdCards.tsx` holds the hover-reveal card. Projects, board members and
-case studies have no image fields, so those cards show placeholder art (`Thumb`) — `cardFor` already reads
-`project.screenshot`/`heroImage` if an upload field is added later (needs a `deploy/migration-round*.sql`).
+page chrome (home passes `home`); `RdCards.tsx` holds the hover-reveal card. Projects have two optional uploads — `logo` (card + the small tile on the project page; empty = the logo found on the
+project's site via `/next/logo`, else initials) and `screenshot` (the image box on the project page; never on the card).
+Board members and case studies have no image fields yet. Round 46 (`deploy/migration-round46.sql`) adds the project columns.

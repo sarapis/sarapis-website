@@ -91,7 +91,6 @@ export function cardFor(p: any, kids: any[], meta: ProjectMeta, opts: { variant?
   if (kids.length) stats.push({ n: kids.length, l: kids.length === 1 ? childLabel(p).one : childLabel(p).many })
   if (allRepos.length) stats.push({ n: allRepos.length, l: allRepos.length === 1 ? 'repo' : 'repos' })
   const org = repoOrg(allRepos[0]?.fullName)
-  const shot = mediaUrl(p.screenshot) || mediaUrl(p.heroImage)
   return {
     id: p.id,
     name: p.name,
@@ -99,10 +98,10 @@ export function cardFor(p: any, kids: any[], meta: ProjectMeta, opts: { variant?
     status: p.status,
     summary: p.summary,
     site: p.site,
-    // an uploaded screenshot wins; otherwise the card shows the site's logo (see Thumb)
-    img: shot,
+    // cards show the project's logo (uploaded, else found on its site); the screenshot is for its own page
+    logo: mediaUrl(p.logo),
     stats,
-    apps: kids.map((k) => ({ id: k.id, name: k.name, site: k.site })),
+    apps: kids.map((k) => ({ id: k.id, name: k.name, site: k.site, logo: mediaUrl(k.logo) })),
     activity: ev ? [repoShort(ev.repoFullName), ev.title, ago(ev.occurredAt)].filter(Boolean).join(' · ') : null,
     gh: org ? `https://github.com/${org}` : null,
     variant: opts.variant,

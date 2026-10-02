@@ -44,7 +44,8 @@
   left: 38vw; top: 50%;
   width: min(1200px, 110vw);
   margin-top: calc(min(1200px, 110vw) / -2);
-  filter: blur(56px) saturate(1.2);
+  /* a little less saturated than the hero's (see rdDesat* below, which starts the home page at full colour) */
+  filter: blur(56px) saturate(.85);
   opacity: .6;
 }
 .rd-compass__mark {
@@ -53,6 +54,7 @@
   margin-top: calc(min(760px, 74vw) / -2);
   opacity: .42;
   mix-blend-mode: multiply;
+  filter: saturate(.75);
 }
 [data-theme=dark] .rd-compass__halo { opacity: .28; }
 [data-theme=dark] .rd-compass__mark { opacity: .2; mix-blend-mode: screen; }
@@ -76,10 +78,8 @@
   display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap;
   padding-bottom: 12px; border-bottom: 2px solid var(--sds-foreground);
 }
-.rd-head--thin { border-bottom: 1px solid var(--sds-border); margin-top: 64px; }
 .rd-subhead { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 36px; }
 .rd-h2 { margin: 0; font-family: var(--sds-font-serif); font-weight: 500; font-size: 2rem; line-height: 1.2; color: var(--sds-foreground); }
-.rd-h3 { margin: 0; font-family: var(--sds-font-serif); font-weight: 500; font-size: 1.5rem; color: var(--sds-foreground); }
 .rd-label { font-family: var(--sds-font-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--sds-muted-foreground); }
 .rd-meta { font-family: var(--sds-font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--sds-muted-foreground); text-decoration: none; }
 a.rd-meta--link, .rd-meta--link { color: var(--sds-primary); }
@@ -115,6 +115,9 @@ a.rd-meta--link, .rd-meta--link { color: var(--sds-primary); }
 
 /* ── Scroll-driven motion (progressive enhancement; content is visible without it) ── */
 @keyframes rdRise { from { opacity: 0; transform: translateY(46px); } to { opacity: 1; transform: none; } }
+/* the compass starts at full colour behind the home hero, then settles to its calmer base colour as the hero scrolls away */
+@keyframes rdDesatHalo { from { filter: blur(56px) saturate(1.2); } }
+@keyframes rdDesatMark { from { filter: saturate(1); } }
 @keyframes rdSpin { from { transform: rotate(0deg) scale(1); } to { transform: rotate(40deg) scale(1.12); } }
 @keyframes rdShrink { to { transform: scale(.86) translateY(-60px); opacity: 0; filter: blur(2px); } }
 @keyframes rdNavSolid {
@@ -129,6 +132,8 @@ a.rd-meta--link, .rd-meta--link { color: var(--sds-primary); }
     /* "backwards" (not "both"): the end state must not pin transform, or the hover lift is overridden */
     .rd-rise { animation: rdRise linear backwards; animation-timeline: view(); animation-range: entry 0% entry 60%; }
     .rd-compass img { animation: rdSpin linear both; animation-timeline: scroll(root block); }
+    .sds-single .rd-compass__halo { animation: rdSpin linear both, rdDesatHalo linear both; animation-timeline: scroll(root block), scroll(root block); animation-range: normal, 45vh 115vh; }
+    .sds-single .rd-compass__mark { animation: rdSpin linear both, rdDesatMark linear both; animation-timeline: scroll(root block), scroll(root block); animation-range: normal, 45vh 115vh; }
     .rd-shell .rd-nav--home {
       background-color: color-mix(in oklch, var(--sds-card) 18%, transparent);
       backdrop-filter: blur(0px);
@@ -188,9 +193,9 @@ a.rd-meta--link, .rd-meta--link { color: var(--sds-primary); }
 .rd-thumb.rd-thumb--logo { background: #fff; display: block; padding: 0; }
 [data-theme=dark] .rd-thumb.rd-thumb--logo { background: rgba(255, 255, 255, .94); }
 /* header-title wordmark for a site with no logo file yet: set in the same box a logo would fill */
-.rd-wordmark { position: absolute; left: 8%; right: 8%; top: 8%; bottom: 30%; display: grid; place-items: center; text-align: center; font-family: var(--sds-font-serif); font-weight: 500; letter-spacing: -.01em; line-height: 1.05; color: var(--sds-ink); overflow-wrap: anywhere; }
+.rd-wordmark { position: absolute; left: 8%; right: 8%; top: 8%; bottom: 200px; display: grid; place-items: center; text-align: center; font-family: var(--sds-font-serif); font-weight: 500; letter-spacing: -.01em; line-height: 1.05; color: var(--sds-ink); overflow-wrap: anywhere; }
 [data-theme=dark] .rd-wordmark { color: #2c1418; }
-.rd-thumb__logo { position: absolute; left: 14%; right: 14%; top: 8%; bottom: 30%; width: 72%; height: 62%; object-fit: contain; display: block; }
+.rd-thumb__logo { position: absolute; left: 14%; right: 14%; top: 8%; bottom: 200px; width: 72%; height: calc(92% - 200px); object-fit: contain; display: block; }
 /* a light-on-transparent (knock-out) logo is turned solid dark so it reads on the white panel */
 .rd-thumb--knockout .rd-thumb__logo { filter: brightness(0); }
 .rd-idrow { display: flex; align-items: center; gap: 12px; }
@@ -199,14 +204,11 @@ a.rd-meta--link, .rd-meta--link { color: var(--sds-primary); }
 .rd-cardtitle { margin: 0; font-family: var(--sds-font-serif); font-weight: 500; font-size: 1.35rem; line-height: 1.15; color: var(--sds-foreground); }
 .rd-cardtitle--app { font-size: 1.25rem; }
 .rd-cardtitle--post { font-size: 1.25rem; line-height: 1.2; text-wrap: pretty; }
-.rd-cardtitle--board { font-size: 1.2rem; line-height: 1.2; }
 .rd-cardregion { font-family: var(--sds-font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--sds-muted-foreground); margin-top: 2px; }
 .rd-cardblurb { margin: 0; font-size: .95rem; line-height: 1.55; color: var(--sds-muted-foreground); text-wrap: pretty; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 .rd-pcard.is-featured .rd-cardblurb { -webkit-line-clamp: 5; }
-.rd-role-tag { font-family: var(--sds-font-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--sds-primary); }
 .rd-role { margin: 0; font-size: .9rem; line-height: 1.5; color: var(--sds-muted-foreground); }
 .rd-role b { color: var(--sds-foreground); font-weight: 600; }
-.rd-bio { margin: 0; font-size: .86rem; line-height: 1.5; color: var(--sds-muted-foreground); text-wrap: pretty; }
 
 /* Placeholder art for items with no image */
 .rd-thumb {
@@ -215,27 +217,36 @@ a.rd-meta--link, .rd-meta--link { color: var(--sds-primary); }
     radial-gradient(110% 80% at 25% 15%, color-mix(in oklch, var(--sds-gold) calc(var(--rd-mix, 24) * 1%), transparent), transparent 62%),
     linear-gradient(160deg, color-mix(in oklch, var(--sds-primary) 14%, var(--sds-card)), color-mix(in oklch, var(--sds-gold) 20%, var(--sds-card)));
 }
-.rd-thumb__mark { position: absolute; width: 120%; left: -10%; top: 50%; margin-top: -60%; opacity: .16; transform: rotate(var(--rd-rot, 0deg)); mix-blend-mode: multiply; }
-.rd-thumb__mono { position: relative; font-family: var(--sds-font-serif); font-weight: 500; font-size: clamp(2.4rem, 7vw, 4rem); letter-spacing: -.02em; color: color-mix(in oklch, var(--sds-primary) 55%, transparent); }
 
 /* ── Hover-reveal card ──────────────────────────────────────────────────────── */
 .rd-revealcard { position: relative; cursor: pointer; overflow: hidden; display: flex; flex-direction: column; }
 .rd-cardlink { position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
 .rd-cardlink:focus-visible { outline: 2px solid var(--sds-ring); outline-offset: -3px; }
-.rd-media { position: relative; overflow: hidden; display: flex; flex-direction: column; }
+/* The image layer is fixed to the whole media box and never moves or resizes; the text panel sits at the
+   bottom and, on hover, grows upward over it (its background fades in from the top edge so text stays legible). */
+.rd-media { position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
 .rd-revealimg {
-  position: relative; flex: 1; min-height: 0;
-  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 200px), rgba(0, 0, 0, .85) calc(100% - 150px), rgba(0, 0, 0, .55) calc(100% - 100px), rgba(0, 0, 0, .22) calc(100% - 50px), transparent 100%);
-  mask-image: linear-gradient(180deg, #000 calc(100% - 200px), rgba(0, 0, 0, .85) calc(100% - 150px), rgba(0, 0, 0, .55) calc(100% - 100px), rgba(0, 0, 0, .22) calc(100% - 50px), transparent 100%);
-  transition: transform .6s cubic-bezier(.2, .8, .2, 1);
+  position: absolute; inset: 0;
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 220px), rgba(0, 0, 0, 0.957) calc(100% - 192px), rgba(0, 0, 0, 0.844) calc(100% - 165px), rgba(0, 0, 0, 0.684) calc(100% - 138px), rgba(0, 0, 0, 0.500) calc(100% - 110px), rgba(0, 0, 0, 0.316) calc(100% - 82px), rgba(0, 0, 0, 0.156) calc(100% - 55px), rgba(0, 0, 0, 0.043) calc(100% - 28px), rgba(0, 0, 0, 0.000) 100%);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 220px), rgba(0, 0, 0, 0.957) calc(100% - 192px), rgba(0, 0, 0, 0.844) calc(100% - 165px), rgba(0, 0, 0, 0.684) calc(100% - 138px), rgba(0, 0, 0, 0.500) calc(100% - 110px), rgba(0, 0, 0, 0.316) calc(100% - 82px), rgba(0, 0, 0, 0.156) calc(100% - 55px), rgba(0, 0, 0, 0.043) calc(100% - 28px), rgba(0, 0, 0, 0.000) 100%);
 }
 .rd-revealimg > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.rd-revealcard:hover .rd-revealimg, .rd-revealcard:focus-within .rd-revealimg { transform: scale(1.04); }
-.rd-hoverpanel { position: relative; flex: none; margin-top: -40px; padding: 40px 20px 20px; display: flex; flex-direction: column; }
+.rd-hoverpanel {
+  position: relative; isolation: isolate; flex: none; padding: 40px 20px 20px; display: flex; flex-direction: column;
+}
+/* At rest the text sits directly on the card glass. On hover a continuous backdrop (one gradient, so no seam) fades in:
+   an eased fade over the 110px above the panel, then near-solid card colour behind the text. */
+.rd-hoverpanel::before { content: ""; position: absolute; z-index: -1; left: 0; right: 0; bottom: 0; top: -110px; pointer-events: none; opacity: 0; transition: opacity .35s ease; background: linear-gradient(180deg, color-mix(in oklch, var(--sds-card) 0.0%, transparent) 0px, color-mix(in oklch, var(--sds-card) 4.0%, transparent) 14px, color-mix(in oklch, var(--sds-card) 14.7%, transparent) 28px, color-mix(in oklch, var(--sds-card) 29.7%, transparent) 41px, color-mix(in oklch, var(--sds-card) 47.0%, transparent) 55px, color-mix(in oklch, var(--sds-card) 64.3%, transparent) 69px, color-mix(in oklch, var(--sds-card) 79.3%, transparent) 82px, color-mix(in oklch, var(--sds-card) 90.0%, transparent) 96px, color-mix(in oklch, var(--sds-card) 94.0%, transparent) 110px); }
+.rd-revealcard:hover .rd-hoverpanel::before, .rd-revealcard:focus-within .rd-hoverpanel::before { opacity: 1; }
 .rd-hoverpanel a, .rd-reveal a { position: relative; z-index: 2; }
 .rd-reveal { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows .5s cubic-bezier(.2, .8, .2, 1), opacity .35s ease; }
 .rd-reveal__in { overflow: hidden; min-height: 0; }
 .rd-revealcard:hover .rd-reveal, .rd-revealcard:focus-within .rd-reveal { grid-template-rows: 1fr; opacity: 1; }
+/* The footer dividers sit at the bottom of the growing panel, so they would show as a stray horizontal line
+   before their content does. Keep them invisible until the panel is nearly open, then fade them in. */
+.rd-cardfoot, .rd-postfoot, .rd-sitelink--rule { border-top-color: transparent; transition: border-top-color .15s ease; }
+.rd-revealcard:hover :is(.rd-cardfoot, .rd-postfoot, .rd-sitelink--rule),
+.rd-revealcard:focus-within :is(.rd-cardfoot, .rd-postfoot, .rd-sitelink--rule) { border-top-color: var(--sds-border); transition: border-top-color .3s ease .3s; }
 @media (hover: none) { .rd-reveal { grid-template-rows: 1fr; opacity: 1; } }
 .rd-stack { display: flex; flex-direction: column; min-height: 0; }
 
@@ -328,10 +339,6 @@ a.rd-meta--link, .rd-meta--link { color: var(--sds-primary); }
 }
 .rd-trackbtn:hover { transform: translateY(-2px); background: color-mix(in oklch, var(--sds-primary) 88%, black); }
 .rd-trackbtn:focus-visible { outline: 2px solid var(--sds-ring); outline-offset: 2px; }
-.rd-board .rd-head--thin { margin-top: 0; }
-.rd-board { margin-top: 64px; }
-.rd-boardcard .rd-revealimg { flex: none; width: 100%; aspect-ratio: 4 / 5; }
-.rd-boardcard { cursor: default; }
 .rd-cases .rd-subhead { margin-top: 36px; }
 
 /* ── Services ───────────────────────────────────────────────────────────────── */
@@ -346,12 +353,8 @@ a.rd-meta--link, .rd-meta--link { color: var(--sds-primary); }
 .rd-about__lede { font-family: var(--sds-font-serif); font-size: 1.7rem; line-height: 1.3; margin: 0; text-wrap: pretty; }
 .rd-about__body { margin: 22px 0 0; max-width: 42rem; text-wrap: pretty; }
 .rd-about__body + .rd-about__body { margin-top: 16px; }
-.rd-partners { margin-top: 32px; }
-.rd-partners__row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
-.rd-partner { min-width: 132px; min-height: 52px; padding: 8px 16px; border: 1px dashed var(--sds-border); border-radius: 8px; display: grid; place-items: center; text-align: center; font-family: var(--sds-font-mono); font-size: 11px; letter-spacing: .06em; color: var(--sds-muted-foreground); }
 .rd-facts { overflow: hidden; }
-.rd-facts__photo { position: relative; aspect-ratio: 16 / 10; background: var(--sds-accent); overflow: hidden; }
-.rd-facts__rows { padding: 6px 20px 8px; }
+.rd-facts__rows { padding: 8px 20px; }
 .rd-facts__row { display: flex; justify-content: space-between; gap: 16px; padding: 11px 0; border-bottom: 1px solid var(--sds-border); }
 .rd-facts__row:last-child { border-bottom: 0; }
 .rd-facts__k { font-family: var(--sds-font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--sds-muted-foreground); }
@@ -376,7 +379,8 @@ a.rd-meta--link, .rd-meta--link { color: var(--sds-primary); }
 .rd-actions__last { margin-left: 8px; text-transform: none; letter-spacing: 0; font-size: 11px; }
 .rd-phead__frame { padding: 10px; box-shadow: 0 30px 70px -30px rgba(30, 20, 10, .45), inset 0 1px 0 rgba(255, 255, 255, .95); }
 .rd-phead__shot { position: relative; aspect-ratio: 16 / 10; border-radius: calc(var(--sds-radius-lg) - 6px); overflow: hidden; background: var(--sds-accent); }
-.rd-phead__shot > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* the screenshot is shown whole (never cropped); anything that is not 16:10 is letterboxed on the placeholder tint */
+.rd-phead__shot > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .rd-pins { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-top: 28px; }
 .rd-pin { display: flex; flex-direction: column; gap: 12px; padding: 22px 22px 20px; text-decoration: none; color: var(--sds-foreground); border-top: 3px solid var(--sds-gold); }
 .rd-pin__title { font-family: var(--sds-font-serif); font-weight: 500; font-size: 1.2rem; line-height: 1.25; text-wrap: pretty; }
@@ -462,3 +466,69 @@ a.rd-meta--link, .rd-meta--link { color: var(--sds-primary); }
   :root:has(.rd-shell) { scroll-behavior: auto; }
   .rd-syncdot, .rd-talk__dot { animation: none; }
 }
+
+/* ── Board of directors (About page): a grid of hover cards ─────────────────── */
+.rd-boardgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 28px; align-items: start; }
+.rd-boardcard { cursor: default; }
+/* a long bio makes the card grow to fit it (as in the design) rather than being clipped */
+.rd-boardcard .rd-media { aspect-ratio: auto !important; min-height: 380px; }
+.rd-cardtitle--board { font-size: 1.2rem; line-height: 1.2; }
+.rd-role-tag { font-family: var(--sds-font-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--sds-primary); }
+.rd-bio { margin: 0; font-size: .86rem; line-height: 1.5; color: var(--sds-muted-foreground); text-wrap: pretty; }
+@media (max-width: 900px) { .rd-boardgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .rd-boardgrid { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── Services page: wiki layout ─────────────────────────────────────────────── */
+.rd-wiki { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 48px; align-items: start; padding-top: 12px; }
+.rd-wiki__side { position: sticky; top: 92px; align-self: start; }
+.rd-wiki__sec { padding-top: 40px; scroll-margin-top: 84px; }
+.rd-wiki__sec:first-child { padding-top: 16px; }
+.rd-wiki__num { font-family: var(--sds-font-mono); font-size: .7em; color: var(--sds-primary); margin-right: 12px; }
+.rd-wiki__lede { font-family: var(--sds-font-serif); font-size: 1.45rem; line-height: 1.35; margin: 22px 0 0; max-width: 46rem; text-wrap: pretty; }
+.rd-wiki__cases { display: flex; flex-direction: column; gap: 14px; margin-top: 28px; }
+.rd-wiki__cases > .rd-label { margin-bottom: 2px; }
+
+.rd-wikinav { border-left: 2px solid var(--sds-border); padding-left: 0; }
+.rd-wikinav__title { font-family: var(--sds-font-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--sds-muted-foreground); padding: 0 0 10px 16px; }
+.rd-wikinav__list, .rd-wikinav__sub { list-style: none; margin: 0; padding: 0; }
+.rd-wikinav__svc, .rd-wikinav__case { display: block; text-decoration: none; margin-left: -2px; border-left: 2px solid transparent; color: var(--sds-foreground); transition: color .15s, border-color .15s, background .15s; }
+.rd-wikinav__svc { padding: 8px 12px 8px 14px; font-family: var(--sds-font-serif); font-size: 1.05rem; line-height: 1.25; }
+.rd-wikinav__num { font-family: var(--sds-font-mono); font-size: 10px; color: var(--sds-muted-foreground); margin-right: 8px; }
+.rd-wikinav__case { padding: 5px 12px 5px 30px; font-size: .84rem; line-height: 1.35; color: var(--sds-muted-foreground); }
+.rd-wikinav__svc:hover, .rd-wikinav__case:hover { color: var(--sds-primary); }
+.rd-wikinav__svc.is-active { border-left-color: var(--sds-primary); color: var(--sds-primary); }
+.rd-wikinav__case.is-active { border-left-color: var(--sds-gold); color: var(--sds-foreground); font-weight: 600; background: color-mix(in oklch, var(--sds-card) 55%, transparent); }
+.rd-wikinav__sub { margin-bottom: 8px; }
+
+/* Case studies: a plain ruled list (no card chrome). Each row expands inline to the screenshot at full size, then the write-up. */
+.rd-wiki__cases { gap: 0; border-bottom: 1px solid var(--sds-border); }
+.rd-wiki__cases > .rd-label { padding-bottom: 10px; }
+.rd-cs { border-top: 1px solid var(--sds-border); }
+.rd-cs__head { display: flex; align-items: center; gap: 18px; width: 100%; padding: 18px 4px; text-align: left; background: none; border: 0; font: inherit; color: inherit; text-decoration: none; cursor: pointer; }
+.rd-cs__head--static { cursor: default; }
+.rd-cs__head:hover .rd-cs__title, .rd-cs.is-open .rd-cs__title { color: var(--sds-primary); }
+.rd-cs__head:focus-visible { outline: 2px solid var(--sds-ring); outline-offset: -2px; border-radius: 6px; }
+.rd-cs__txt { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+.rd-cs__title { font-family: var(--sds-font-serif); font-weight: 500; font-size: 1.3rem; line-height: 1.2; text-wrap: pretty; transition: color .15s; }
+.rd-cs__meta { font-family: var(--sds-font-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--sds-muted-foreground); }
+.rd-cs__arrow { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--sds-border); color: var(--sds-primary); font-family: var(--sds-font-mono); transition: transform .35s cubic-bezier(.2, .8, .2, 1), background .2s, color .2s, border-color .2s; }
+.rd-cs__head:hover .rd-cs__arrow, .rd-cs.is-open .rd-cs__arrow { background: var(--sds-primary); border-color: var(--sds-primary); color: var(--sds-primary-foreground); }
+.rd-cs.is-open .rd-cs__arrow { transform: rotate(180deg); }
+.rd-cs__body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .5s cubic-bezier(.2, .8, .2, 1); }
+.rd-cs.is-open .rd-cs__body { grid-template-rows: 1fr; }
+.rd-cs__bodyin { overflow: hidden; min-height: 0; }
+.rd-cs__report { padding: 4px 4px 36px; }
+/* the screenshot is shown whole: full width of the column, natural height, never cropped */
+.rd-cs__shot { margin: 0 0 28px; border: 1px solid var(--sds-border); border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 10px 32px -22px rgba(30, 20, 10, .4); }
+.rd-cs__shot img { display: block; width: 100%; height: auto; }
+.rd-cs__text { max-width: 46rem; }
+.rd-cs__open { margin: 24px 0 0; font-family: var(--sds-font-mono); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.rd-cs__open a { text-decoration: none; }
+
+@media (max-width: 900px) {
+  .rd-wiki { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .rd-wiki__side { position: static; }
+  .rd-wikinav__sub { display: none; }
+}
+
+.rd-thumb--word { container-type: inline-size; }
