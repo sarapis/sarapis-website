@@ -25,19 +25,22 @@ const hostOf = (site?: string | null): string | null => {
 export function SiteMono({
   text,
   site,
+  logo,
   size,
   tile = true,
   className = '',
 }: {
   text: string
   site?: string | null
+  /** an uploaded logo (the CMS `logo` field); wins over the logo found on the site */
+  logo?: string | null
   size?: number
   tile?: boolean
   className?: string
 }) {
   const host = hostOf(site)
   const [ok, setOk] = useState(false)
-  const [failed, setFailed] = useState(!host)
+  const [failed, setFailed] = useState(!host && !logo)
   const img = useRef<HTMLImageElement>(null)
 
   const judge = (el: HTMLImageElement) => {
@@ -55,12 +58,12 @@ export function SiteMono({
   return (
     <span className={`${tile ? 'rd-mono' : 'rd-glyph'}${ok ? ' is-logo' : ''} ${className}`} style={style}>
       {!ok && text}
-      {host && !failed && (
+      {(logo || host) && !failed && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           ref={img}
           className="rd-logoimg"
-          src={`/next/logo?u=${encodeURIComponent(siteKey(site) || host)}&v=${LOGO_URL_VERSION}`}
+          src={logo || `/next/logo?u=${encodeURIComponent(siteKey(site) || host!)}&v=${LOGO_URL_VERSION}`}
           alt=""
           // hidden (not display:none, which would stop it loading) until it is judged big enough
           style={ok ? undefined : { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
@@ -105,11 +108,11 @@ function isKnockout(el: HTMLImageElement): boolean {
  * or — when the site has no logo, or only a tiny one — the tinted placeholder art
  * (compass mark + big serif monogram). Used by `Thumb`.
  */
-export function SiteThumb({ name, text, site }: { name: string; text: string; site?: string | null }) {
+export function SiteThumb({ name, text, site, logo }: { name: string; text: string; site?: string | null; logo?: string | null }) {
   const host = hostOf(site)
   const [ok, setOk] = useState(false)
   const [light, setLight] = useState(false)
-  const [failed, setFailed] = useState(!host)
+  const [failed, setFailed] = useState(!host && !logo)
   const img = useRef<HTMLImageElement>(null)
 
   const judge = (el: HTMLImageElement) => {
@@ -128,7 +131,7 @@ export function SiteThumb({ name, text, site }: { name: string; text: string; si
   const [word, setWord] = useState<string | null>(null)
   useEffect(() => {
     const key = siteKey(site)
-    if (!failed || !host || !key) return
+    if (!failed || logo || !host || !key) return
     let live = true
     fetch(`/next/wordmark?u=${encodeURIComponent(key)}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -137,14 +140,16 @@ export function SiteThumb({ name, text, site }: { name: string; text: string; si
     return () => {
       live = false
     }
-  }, [failed, host, site])
+  }, [failed, host, site, logo])
 
   const h = hashOf(name, 360)
   if (word && !ok) {
     const st = WORDMARK_STYLES[siteKey(site) || '']
     const scale = st?.size ?? 1
     const textStyle: React.CSSProperties = {
-      fontSize: `clamp(${1.25 * scale}rem, ${Math.max(1.6, 4.2 - word.length * 0.16) * scale}vw, ${Math.max(1.5, 2.9 - word.length * 0.09) * scale}rem)`,
+      // sized for the viewport, but never wider than the card (cqw = % of the card's width) so it stays on one line
+      fontSize: `min(clamp(${1.25 * scale}rem, ${Math.max(1.6, 4.2 - word.length * 0.16) * scale}vw, ${Math.max(1.5, 2.9 - word.length * 0.09) * scale}rem), ${(100 / (word.length * 0.66) * 0.84).toFixed(1)}cqw)`,
+      whiteSpace: 'nowrap',
       ...(st && { fontFamily: st.fontFamily, fontWeight: st.fontWeight, letterSpacing: st.letterSpacing }),
       ...(st?.color && { color: st.color }),
       ...(st?.gradient && { backgroundImage: st.gradient, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', WebkitTextFillColor: 'transparent' }),
@@ -162,12 +167,12 @@ export function SiteThumb({ name, text, site }: { name: string; text: string; si
       className={`rd-thumb${ok ? ' rd-thumb--logo' : ''}${ok && light ? ' rd-thumb--knockout' : ''}`}
       style={{ ['--rd-rot' as any]: `${h}deg`, ['--rd-mix' as any]: 18 + (h % 5) * 6 }}
     >
-      {host && !failed && (
+      {(logo || host) && !failed && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           ref={img}
           className="rd-thumb__logo"
-          src={`/next/logo?u=${encodeURIComponent(siteKey(site) || host)}&v=${LOGO_URL_VERSION}`}
+          src={logo || `/next/logo?u=${encodeURIComponent(siteKey(site) || host!)}&v=${LOGO_URL_VERSION}`}
           alt=""
           // hidden (not display:none, which would stop it loading) until it is judged big enough
           style={ok ? undefined : { position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}

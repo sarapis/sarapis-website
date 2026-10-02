@@ -1,13 +1,13 @@
 import React from 'react'
 import Link from 'next/link'
-import { GitHubIcon, BookIcon } from './RdIcons'
+import { GitHubIcon } from './RdIcons'
 import { hashOf, monogram, mediaUrl, siteHref, siteLabel } from './rd'
 import { SiteMono, SiteThumb } from './SiteMono'
 import { CardImg } from './CardImg'
 
 /** Rounded maroon tile with a two-letter monogram (project / app / post identity). */
-export function Mono({ text, size = 40, className = '', site }: { text: string; size?: number; className?: string; site?: string | null }) {
-  if (site) return <SiteMono text={text} site={site} size={size} className={className} />
+export function Mono({ text, size = 40, className = '', site, logo }: { text: string; size?: number; className?: string; site?: string | null; logo?: string | null }) {
+  if (site || logo) return <SiteMono text={text} site={site} logo={logo} size={size} className={className} />
   return (
     <span
       className={`rd-mono ${className}`}
@@ -19,8 +19,8 @@ export function Mono({ text, size = 40, className = '', site }: { text: string; 
 }
 
 /** Placeholder for items without an image: an empty, softly tinted panel (or, with `site`, the site's logo or wordmark). */
-export function Thumb({ name, label, site }: { name: string; label?: string; site?: string | null }) {
-  if (site) return <SiteThumb name={name} text={label ?? monogram(name)} site={site} />
+export function Thumb({ name, label, site, logo }: { name: string; label?: string; site?: string | null; logo?: string | null }) {
+  if (site || logo) return <SiteThumb name={name} text={label ?? monogram(name)} site={site} logo={logo} />
   const h = hashOf(name, 360)
   return <div className="rd-thumb" style={{ ['--rd-mix' as any]: 18 + (h % 5) * 6 }} />
 }
@@ -102,8 +102,10 @@ export type ProjectCardData = {
   summary?: string | null
   site?: string | null
   img?: string | null
+  /** uploaded logo (CMS `logo` field), shown large on the card in place of the one found on the site */
+  logo?: string | null
   stats: { n: string | number; l: string }[]
-  apps: { id: number; name: string; site?: string | null }[]
+  apps: { id: number; name: string; site?: string | null; logo?: string | null }[]
   activity?: string | null
   gh?: string | null
   featured?: boolean
@@ -123,7 +125,7 @@ export function ProjectCard({ p }: { p: ProjectCardData }) {
       ratio={p.ratio || (app ? '4 / 5' : '3 / 4')}
       img={p.img}
       alt="" // decorative: the card link is already labelled, and a missing image must show nothing, not alt text
-      thumb={<Thumb name={p.name} site={p.site} />}
+      thumb={<Thumb name={p.name} site={p.site} logo={p.logo} />}
       className={`rd-pcard ${p.featured ? 'is-featured' : ''} ${p.span || ''}`}
       gap={app ? 10 : 12}
       reveal={
@@ -142,7 +144,7 @@ export function ProjectCard({ p }: { p: ProjectCardData }) {
             <div className="rd-apps">
               {p.apps.map((a) => (
                 <Link key={a.id} className="rd-apptile" href={`/projects/${a.id}`} title={a.name} aria-label={a.name}>
-                  <SiteMono text={monogram(a.name)} site={a.site} tile={false} />
+                  <SiteMono text={monogram(a.name)} site={a.site} logo={a.logo} tile={false} />
                 </Link>
               ))}
             </div>
@@ -165,11 +167,6 @@ export function ProjectCard({ p }: { p: ProjectCardData }) {
               {p.gh && (
                 <IconLink href={p.gh} title="GitHub">
                   <GitHubIcon size={app ? 14 : 15} />
-                </IconLink>
-              )}
-              {!app && (
-                <IconLink href={`${href}#knowledge`} title="Documentation">
-                  <BookIcon />
                 </IconLink>
               )}
               <IconLink href={href} title="Full profile" fill>

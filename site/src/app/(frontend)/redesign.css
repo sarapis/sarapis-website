@@ -379,7 +379,8 @@ a.rd-meta--link, .rd-meta--link { color: var(--sds-primary); }
 .rd-actions__last { margin-left: 8px; text-transform: none; letter-spacing: 0; font-size: 11px; }
 .rd-phead__frame { padding: 10px; box-shadow: 0 30px 70px -30px rgba(30, 20, 10, .45), inset 0 1px 0 rgba(255, 255, 255, .95); }
 .rd-phead__shot { position: relative; aspect-ratio: 16 / 10; border-radius: calc(var(--sds-radius-lg) - 6px); overflow: hidden; background: var(--sds-accent); }
-.rd-phead__shot > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* the screenshot is shown whole (never cropped); anything that is not 16:10 is letterboxed on the placeholder tint */
+.rd-phead__shot > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .rd-pins { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-top: 28px; }
 .rd-pin { display: flex; flex-direction: column; gap: 12px; padding: 22px 22px 20px; text-decoration: none; color: var(--sds-foreground); border-top: 3px solid var(--sds-gold); }
 .rd-pin__title { font-family: var(--sds-font-serif); font-weight: 500; font-size: 1.2rem; line-height: 1.25; text-wrap: pretty; }
@@ -529,3 +530,5 @@ a.rd-meta--link, .rd-meta--link { color: var(--sds-primary); }
   .rd-wiki__side { position: static; }
   .rd-wikinav__sub { display: none; }
 }
+
+.rd-thumb--word { container-type: inline-size; }
