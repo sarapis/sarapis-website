@@ -138,6 +138,10 @@ export default buildConfig({
     'https://un.opensource.nyc',
     'https://opensource.nyc',
     'https://www.opensource.nyc',
+    // The campaign for an NYC Open Source Program Office (sarapis/ospo-nyc),
+    // on Cloudflare since 2026-10-14. Its "Get updates" form posts to
+    // campaign-signups and contact-submissions.
+    'https://ospo.opensource.nyc',
     ...(process.env.CORS_ORIGINS?.split(',').map((o) => o.trim()) ?? []),
   ].filter(Boolean),
   globals: [Header, Footer, Homepage].map(withFrontendRevalidationGlobal),
