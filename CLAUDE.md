@@ -91,6 +91,16 @@ on update; editorial fields (`published`, `pinned`, `project`, `summary`, …) a
 - The route has an in-process mutex (409 "Sync already running"), and a client timeout does not
   abort the server handler — for a long backfill, trigger once and poll.
 
+## "Sign in with the CMS" (`src/endpoints/collab-pass.ts`)
+
+`GET /api/collab-pass/start?host=<collab site>&state=<random>` lets a sarapis/collab-template site
+(comms-strat.sarapis.org first) sign people in with their login here: it redirects a signed-in user to
+`https://<host>/auth/cms/callback?ticket=…`, a two-minute HMAC ticket naming their **email and nothing
+else** (the collab site's roster authorizes). Signed out → the admin login, then back. Mints only for hosts
+in `COLLAB_PASS_HOSTS` (else 400); 503 until `COLLAB_PASS_SECRET` (≥ 32 chars, the collab Worker's
+`CMS_PASS_SECRET`) is set. The format is byte-compatible with the Field Guide CMS's copy and the template's
+verifier; `tests/int/collab-pass.int.spec.ts` pins both.
+
 ## Backups
 
 `site/deploy/backup/sarapis-backup.py`, nightly via `sarapis-backup.cron`. It takes a consistent
