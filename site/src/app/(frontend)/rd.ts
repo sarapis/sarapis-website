@@ -67,16 +67,17 @@ export const CHILD_LABELS = {
 export const childLabel = (p: any) => CHILD_LABELS[p?.childLabel as keyof typeof CHILD_LABELS] ?? CHILD_LABELS.subprojects
 
 /**
- * How a site's header title looks on its own site, for the wordmark shown on a project
- * card while the site has no logo file. Keyed by siteKey(); anything not listed gets
+ * How a site's header title is set on its project card while the site has no logo file: the
+ * site's own typeface, recoloured dark to sit on the card's white panel (the sites' real headers
+ * are light-on-navy). Keyed by siteKey(); anything not listed gets
  * the plain dark-on-white wordmark. Delete an entry once that project has a real logo.
  */
-export type WordmarkStyle = { background: string; color?: string; gradient?: string; fontFamily: string; fontWeight: number; letterSpacing?: string; size: number }
+export type WordmarkStyle = { color?: string; gradient?: string; fontFamily: string; fontWeight: number; letterSpacing?: string; size: number }
 export const WORDMARK_STYLES: Record<string, WordmarkStyle> = {
-  // databook.nyc header: bold orange sans on navy
-  'databook.nyc': { background: '#1d2e50', color: '#f59630', fontFamily: 'var(--sds-font-sans)', fontWeight: 800, letterSpacing: '.01em', size: 1 },
-  // wegov.nyc header: DM Serif Display, blue-to-gold gradient text on navy
-  'wegov.nyc': { background: '#1d2e50', gradient: 'linear-gradient(135deg, #7bb4e8, #d4a843)', fontFamily: 'var(--font-dm-serif), Georgia, serif', fontWeight: 400, letterSpacing: '-.5px', size: 1.25 },
+  // databook.nyc header is bold sans; shown in its navy
+  'databook.nyc': { color: '#1d2e50', fontFamily: 'var(--sds-font-sans)', fontWeight: 800, letterSpacing: '.01em', size: 1 },
+  // wegov.nyc header is DM Serif Display with a blue-to-gold gradient; navy-to-deep-gold here for contrast on white
+  'wegov.nyc': { gradient: 'linear-gradient(135deg, #1d2e50 35%, #a77c1f)', fontFamily: 'var(--font-dm-serif), Georgia, serif', fontWeight: 400, letterSpacing: '-.5px', size: 1.25 },
 }
 
 /** Normalised "host/path" of a project's `site` (no scheme, no `www.`, no trailing slash) — the key the wordmark route takes. */

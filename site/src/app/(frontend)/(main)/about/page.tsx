@@ -5,6 +5,8 @@ import configPromise from '@payload-config'
 import type { Metadata } from 'next'
 import '../../home.css'
 import { SupportSignup } from '../../SupportSignup'
+import { HoverCard, Thumb } from '../../RdCards'
+import { mediaUrl } from '../../rd'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +14,11 @@ export const metadata: Metadata = {
   title: 'About · Sarapis',
   description:
     'Sarapis is a New York-incorporated 501(c)(3) nonprofit, formed in 2010, helping nonprofits and the public sector adopt free, libre & open-source technology.',
+}
+
+const initials = (name: string) => {
+  const w = name.split(/\s+/).filter(Boolean)
+  return ((w[0]?.[0] || '') + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase()
 }
 
 export default async function AboutPage() {
@@ -43,7 +50,6 @@ export default async function AboutPage() {
       <section className="sds-container sds-band sds-band--first">
         <div className="sds-seclead">
           <h2 className="sds-seclead__title">Who we are</h2>
-          <span className="sds-seclead__meta">Since 2010</span>
         </div>
         <div className="sds-about">
           <div>
@@ -73,46 +79,45 @@ export default async function AboutPage() {
         <section className="sds-container sds-band">
           <div className="sds-seclead">
             <h2 className="sds-seclead__title">Board of Directors</h2>
-            <span className="sds-seclead__meta">{board.length} members</span>
           </div>
-          <div className="sds-board">
+          <div className="rd-boardgrid">
             {board.map((m, i) => (
-              <div key={i} className="sds-board__card">
-                <div className="sds-board__head">
-                  <h3 className="sds-board__name">{m.name}</h3>
-                  {m.role && <span className="sds-board__role">{m.role}</span>}
-                </div>
-                {m.bio && <p className="sds-board__bio">{m.bio}</p>}
-                {m.link && (
-                  <a
-                    className="sds-board__link"
-                    href={/^https?:\/\//.test(m.link) ? m.link : `https://${m.link}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    ↗ {String(m.link).replace(/^https?:\/\//, '')}
-                  </a>
-                )}
-              </div>
+              <HoverCard
+                key={m.id || i}
+                label={m.name}
+                ratio="3 / 4"
+                // a portrait, once the CMS has a field for one; until then the card shows initials on placeholder art
+                img={mediaUrl(m.portrait) || mediaUrl(m.image)}
+                thumb={<Thumb name={m.name} label={initials(m.name)} />}
+                className="rd-boardcard"
+                gap={6}
+                reveal={
+                  (m.bio || m.link) && (
+                    <div className="rd-stack" style={{ gap: 10, paddingTop: 6 }}>
+                      {m.bio && <p className="rd-bio">{m.bio}</p>}
+                      {m.link && (
+                        <a
+                          className="rd-sitelink rd-sitelink--rule"
+                          href={/^https?:\/\//.test(m.link) ? m.link : `https://${m.link}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {String(m.link).replace(/^https?:\/\//, '')} ↗
+                        </a>
+                      )}
+                    </div>
+                  )
+                }
+              >
+                <h3 className="rd-cardtitle rd-cardtitle--board">{m.name}</h3>
+                {m.role && <div className="rd-role-tag">{m.role}</div>}
+              </HoverCard>
             ))}
           </div>
         </section>
       )}
 
-      {/* Support */}
-      <section className="sds-container sds-band" style={{ paddingBottom: 56 }}>
-        <section className="sds-callout">
-          <h2 className="sds-callout__title">Help us help people who help people.</h2>
-          <p className="sds-callout__text">
-            Sarapis is a New York-incorporated 501(c)(3) nonprofit — contributions are tax-deductible.
-          </p>
-          <div className="sds-callout__actions">
-            <span style={{ ['--sds-primary' as any]: 'var(--sds-gold)', ['--sds-primary-foreground' as any]: 'var(--sds-ink)' } as React.CSSProperties}>
-              <Link className="sds-button sds-button--primary sds-button--lg" href="/donate">Donate</Link>
-            </span>
-          </div>
-        </section>
-      </section>
+      <div style={{ height: 56 }} />
     </div>
   )
 }
