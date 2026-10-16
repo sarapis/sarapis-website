@@ -31,6 +31,7 @@ import { Homepage } from './globals/Homepage'
 import { plugins } from './plugins'
 import { defaultLexical } from '@/fields/defaultLexical'
 import { getServerSideURL } from './utilities/getURL'
+import { collabPassStartEndpoint } from './endpoints/collab-pass'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -144,6 +145,10 @@ export default buildConfig({
     'https://ospo.opensource.nyc',
     ...(process.env.CORS_ORIGINS?.split(',').map((o) => o.trim()) ?? []),
   ].filter(Boolean),
+  // "Sign in with the CMS" on collab-template sites (endpoints/collab-pass.ts): GET
+  // /api/collab-pass/start. Proves an email; the collab site's roster decides. Off (503)
+  // until COLLAB_PASS_SECRET is set, and mints only for hosts in COLLAB_PASS_HOSTS.
+  endpoints: [collabPassStartEndpoint],
   globals: [Header, Footer, Homepage].map(withFrontendRevalidationGlobal),
   plugins,
   secret: process.env.PAYLOAD_SECRET,
