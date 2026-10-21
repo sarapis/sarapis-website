@@ -2531,6 +2531,10 @@ export interface Homepage {
          * Optional personal/work URL.
          */
         link?: string | null;
+        /**
+         * Photo shown on this person’s card on /about. Portrait orientation (about 3:4), 600px wide or more looks best; it is cropped to fill the card. Leave empty to use the photo already on the site for this person, or an empty card if there is none.
+         */
+        portrait?: (number | null) | Media;
         id?: string | null;
       }[]
     | null;
@@ -2643,6 +2647,7 @@ export interface HomepageSelect<T extends boolean = true> {
         role?: T;
         bio?: T;
         link?: T;
+        portrait?: T;
         id?: T;
       };
   about?:

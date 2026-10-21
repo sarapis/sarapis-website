@@ -6,7 +6,7 @@ import type { Metadata } from 'next'
 import '../../home.css'
 import { SupportSignup } from '../../SupportSignup'
 import { HoverCard, Thumb } from '../../RdCards'
-import { mediaUrl } from '../../rd'
+import { BOARD_PHOTOS, mediaUrl } from '../../rd'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,11 +14,6 @@ export const metadata: Metadata = {
   title: 'About · Sarapis',
   description:
     'Sarapis is a New York-incorporated 501(c)(3) nonprofit, formed in 2010, helping nonprofits and the public sector adopt free, libre & open-source technology.',
-}
-
-const initials = (name: string) => {
-  const w = name.split(/\s+/).filter(Boolean)
-  return ((w[0]?.[0] || '') + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase()
 }
 
 export default async function AboutPage() {
@@ -86,9 +81,10 @@ export default async function AboutPage() {
                 key={m.id || i}
                 label={m.name}
                 ratio="3 / 4"
-                // a portrait, once the CMS has a field for one; until then the card shows initials on placeholder art
-                img={mediaUrl(m.portrait) || mediaUrl(m.image)}
-                thumb={<Thumb name={m.name} label={initials(m.name)} />}
+                // the CMS upload if there is one, else the shipped photo, else an empty card
+                img={mediaUrl(m.portrait) || BOARD_PHOTOS[m.name] || null}
+                alt={m.name}
+                thumb={<Thumb name={m.name} />}
                 className="rd-boardcard"
                 gap={6}
                 reveal={

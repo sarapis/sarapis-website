@@ -91,3 +91,16 @@ export function siteKey(site?: string | null): string | null {
     return null
   }
 }
+
+/**
+ * Board photos shipped with the site (`public/board/`), taken from the old sarapis.org About page.
+ * Used when a board member has no `portrait` upload in the CMS (an upload always wins). Keyed by
+ * the person's name as it appears in the Homepage global's board list.
+ */
+export const BOARD_PHOTOS: Record<string, string> = {
+  'Devin Balkind': '/board/devin-balkind.png',
+  'Wendy Brawer': '/board/wendy-brawer.jpg',
+  'Nicholas J. Davis': '/board/nicholas-j-davis.jpeg',
+  'John Godfrey': '/board/john-godfrey.jpg',
+  'Kate Nicholson': '/board/kate-nicholson.jpeg',
+}
