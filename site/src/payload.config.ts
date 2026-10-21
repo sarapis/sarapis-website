@@ -31,6 +31,7 @@ import { Homepage } from './globals/Homepage'
 import { plugins } from './plugins'
 import { defaultLexical } from '@/fields/defaultLexical'
 import { getServerSideURL } from './utilities/getURL'
+import { collabPassStartEndpoint } from './endpoints/collab-pass'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -138,8 +139,16 @@ export default buildConfig({
     'https://un.opensource.nyc',
     'https://opensource.nyc',
     'https://www.opensource.nyc',
+    // The campaign for an NYC Open Source Program Office (sarapis/ospo-nyc),
+    // on Cloudflare since 2026-10-14. Its "Get updates" form posts to
+    // campaign-signups and contact-submissions.
+    'https://ospo.opensource.nyc',
     ...(process.env.CORS_ORIGINS?.split(',').map((o) => o.trim()) ?? []),
   ].filter(Boolean),
+  // "Sign in with the CMS" on collab-template sites (endpoints/collab-pass.ts): GET
+  // /api/collab-pass/start. Proves an email; the collab site's roster decides. Off (503)
+  // until COLLAB_PASS_SECRET is set, and mints only for hosts in COLLAB_PASS_HOSTS.
+  endpoints: [collabPassStartEndpoint],
   globals: [Header, Footer, Homepage].map(withFrontendRevalidationGlobal),
   plugins,
   secret: process.env.PAYLOAD_SECRET,
