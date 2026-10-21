@@ -145,4 +145,10 @@ The glass-card redesign (compass background, hover-reveal cards, scroll-driven m
 on top of the generated `home.css`, so it does **not** need regenerating. `RdShell.tsx` is the shared
 page chrome (home passes `home`); `RdCards.tsx` holds the hover-reveal card. Projects have two optional uploads — `logo` (card + the small tile on the project page; empty = the logo found on the
 project's site via `/next/logo`, else initials) and `screenshot` (the image box on the project page; never on the card).
-Board members and case studies have no image fields yet. Round 46 (`deploy/migration-round46.sql`) adds the project columns.
+Board members have an optional `portrait` upload (falls back to the photo in `public/board/`, see `BOARD_PHOTOS` in `rd.ts`); case studies have no image field. These columns ship as Payload migrations in `site/src/migrations/` (`20261021_*`).
+
+⚠ **`payload migrate:create` is unsafe here until the snapshot is refreshed.** `src/migrations/*.json` (the schema snapshot it diffs
+against) predates the hand-applied `deploy/migration-round*.sql` changes, so a generated migration would try to re-add columns the box
+already has (`projects.region`, `homepage_board`, …) and fail. Hand-write new migrations (see the `20261021_*` ones: they check
+`PRAGMA table_info` before `ALTER TABLE ADD`, so they are safe to re-run), and test with `NODE_ENV=production DATABASE_URI=file:<copy>.db
+pnpm exec payload migrate` against a copy of the box DB.
