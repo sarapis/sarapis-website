@@ -985,6 +985,14 @@ export interface Project {
    */
   site?: string | null;
   /**
+   * The project’s logo, shown large on its card (home and All Projects) and in the small tile at the top of its own page. A transparent PNG or SVG on a plain background works best; a wide wordmark is fine. Leave empty to use the logo found on the project’s website automatically (or the project’s initials if it has none).
+   */
+  logo?: (number | null) | Media;
+  /**
+   * A screenshot of the software, shown in the image box at the top right of the project’s own page. Landscape (about 16:10) at 1600px wide or more looks best; it is shown whole, not cropped. Leave empty and the box stays an empty placeholder.
+   */
+  screenshot?: (number | null) | Media;
+  /**
    * Parent project — organizes projects into a tree.
    */
   parent?: (number | null) | Project;
@@ -1963,6 +1971,8 @@ export interface ProjectsSelect<T extends boolean = true> {
   childLabel?: T;
   lineage?: T;
   site?: T;
+  logo?: T;
+  screenshot?: T;
   parent?: T;
   summary?: T;
   projectLeader?: T;
@@ -2521,6 +2531,10 @@ export interface Homepage {
          * Optional personal/work URL.
          */
         link?: string | null;
+        /**
+         * Photo shown on this person’s card on /about. Portrait orientation (about 3:4), 600px wide or more looks best; it is cropped to fill the card. Leave empty to use the photo already on the site for this person, or an empty card if there is none.
+         */
+        portrait?: (number | null) | Media;
         id?: string | null;
       }[]
     | null;
@@ -2633,6 +2647,7 @@ export interface HomepageSelect<T extends boolean = true> {
         role?: T;
         bio?: T;
         link?: T;
+        portrait?: T;
         id?: T;
       };
   about?:

@@ -9,7 +9,7 @@ import { ProjectsView } from './ProjectsView'
 import { PostsSection, type PostCard } from './PostsSection'
 import { Carousel } from './Carousel'
 import { CountUp } from './CountUp'
-import { HoverCard, IconLink, Thumb } from './RdCards'
+import { CaseStudyCard, caseStudySlug } from './RdCards'
 import { EVENT_COLOR, ago, daysAgoISO, fmtDay, fmtMonthYear, mediaUrl, monogram, repoShort } from './rd'
 
 export const dynamic = 'force-dynamic'
@@ -59,7 +59,6 @@ export default async function HomePage({
   const services: any[] = Array.isArray(homepage?.services) ? homepage.services : []
   const facts: any[] = Array.isArray(homepage?.about?.facts) ? homepage.about.facts : []
   const aboutParas: any[] = Array.isArray(homepage?.about?.paragraphs) ? homepage.about.paragraphs : []
-  const board: any[] = Array.isArray(homepage?.board) ? homepage.board : []
 
   // ---- Recent posts (carousel + topic filter) ----
   const catOf = (p: any) =>
@@ -87,12 +86,6 @@ export default async function HomePage({
   // ---- Case studies: link, image (from the post they point to) and service ----
   const postBySlug = new Map((casePosts.docs as any[]).map((p) => [p.slug, p]))
   const serviceTitle = new Map(services.map((s) => [s.slug, s.title]))
-  const partners = [...new Set(caseStudies.map((c) => c.source).filter(Boolean))] as string[]
-
-  const initials = (name: string) => {
-    const w = name.split(/\s+/).filter(Boolean)
-    return ((w[0]?.[0] || '') + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase()
-  }
 
   return (
     <RdShell home>
@@ -201,57 +194,21 @@ export default async function HomePage({
                   head={<div className="rd-label">Case studies · {caseStudies.length}</div>}
                   arrows={caseStudies.length > 3}
                 >
-                  {caseStudies.map((c, i) => {
-                    const slug = String(c.href || '').match(/^\/posts\/([^/?#]+)/)?.[1]
-                    const post = slug ? postBySlug.get(slug) : null
-                    const svc = c.service ? serviceTitle.get(c.service) : null
-                    const href = c.href && c.href !== '#' ? c.href : undefined
-                    return (
-                      <HoverCard
-                        key={c.id || i}
-                        href={href}
-                        label={c.title}
-                        img={post ? mediaUrl(post.heroImage) || mediaUrl(post.meta?.image) : null}
-                        alt={c.title}
-                        thumb={<Thumb name={c.title} label={monogram(c.source || c.type || 'CS')} />}
-                        gap={10}
-                        reveal={
-                          <div className="rd-stack" style={{ gap: 10, paddingTop: 6 }}>
-                            <p className="rd-role">
-                              {c.source && (
-                                <>
-                                  <b>Partner:</b> {c.source}
-                                </>
-                              )}
-                              {c.source && svc && <br />}
-                              {svc && (
-                                <>
-                                  <b>Service:</b> {svc}
-                                </>
-                              )}
-                            </p>
-                            {href && (
-                              <div className="rd-postfoot rd-postfoot--end">
-                                <IconLink href={href} title="Read the case study" fill>
-                                  →
-                                </IconLink>
-                              </div>
-                            )}
-                          </div>
-                        }
-                      >
-                        <span className="sds-tag">{c.type}</span>
-                        <h3 className="rd-cardtitle rd-cardtitle--post">{c.title}</h3>
-                      </HoverCard>
-                    )
-                  })}
+                  {caseStudies.map((c, i) => (
+                    <CaseStudyCard
+                      key={c.id || i}
+                      c={c}
+                      post={caseStudySlug(c) ? postBySlug.get(caseStudySlug(c)!) : null}
+                      serviceTitle={c.service ? serviceTitle.get(c.service) : null}
+                    />
+                  ))}
                 </Carousel>
               </div>
             )}
           </section>
         )}
 
-        {/* About + board */}
+        {/* About (the board of directors lives on /about) */}
         {(homepage?.about?.lede || aboutParas.length > 0) && (
           <section id="about" className="sds-container rd-sec">
             <div className="rd-head">
@@ -268,23 +225,8 @@ export default async function HomePage({
                     {para.text}
                   </p>
                 ))}
-                {partners.length > 0 && (
-                  <div className="rd-partners">
-                    <div className="rd-label">Built with</div>
-                    <div className="rd-partners__row">
-                      {partners.map((n) => (
-                        <div key={n} className="rd-partner">
-                          {n}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
               <div className="rd-glass rd-lift rd-facts">
-                <div className="rd-facts__photo">
-                  <Thumb name="Sarapis" label="" />
-                </div>
                 {facts.length > 0 && (
                   <div className="rd-facts__rows">
                     {facts.map((f, i) => (
@@ -297,48 +239,6 @@ export default async function HomePage({
                 )}
               </div>
             </div>
-
-            {board.length > 0 && (
-              <div className="rd-board">
-                <Carousel
-                  headClassName="rd-head rd-head--thin"
-                  head={<h3 className="rd-h3">Board of Directors</h3>}
-                  extra={<span className="rd-meta">{board.length} members</span>}
-                  arrows={board.length > 3}
-                >
-                  {board.map((m, i) => (
-                    <HoverCard
-                      key={m.id || i}
-                      label={m.name}
-                      ratio="auto"
-                      thumb={<Thumb name={m.name} label={initials(m.name)} />}
-                      className="rd-boardcard"
-                      gap={6}
-                      reveal={
-                        (m.bio || m.link) && (
-                          <div className="rd-stack" style={{ gap: 10, paddingTop: 6 }}>
-                            {m.bio && <p className="rd-bio">{m.bio}</p>}
-                            {m.link && (
-                              <a
-                                className="rd-sitelink rd-sitelink--rule"
-                                href={/^https?:\/\//.test(m.link) ? m.link : `https://${m.link}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                {String(m.link).replace(/^https?:\/\//, '')} ↗
-                              </a>
-                            )}
-                          </div>
-                        )
-                      }
-                    >
-                      <h4 className="rd-cardtitle rd-cardtitle--board">{m.name}</h4>
-                      {m.role && <div className="rd-role-tag">{m.role}</div>}
-                    </HoverCard>
-                  ))}
-                </Carousel>
-              </div>
-            )}
           </section>
         )}
 
