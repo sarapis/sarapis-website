@@ -96,7 +96,9 @@ on update; editorial fields (`published`, `pinned`, `project`, `summary`, …) a
 `GET /api/collab-pass/start?host=<collab site>&state=<random>` lets a sarapis/collab-template site
 (comms-strat.sarapis.org first) sign people in with their login here: it redirects a signed-in user to
 `https://<host>/auth/cms/callback?ticket=…`, a two-minute HMAC ticket naming their **email and nothing
-else** (the collab site's roster authorizes). Signed out → the admin login, then back. Mints only for hosts
+else** (the collab site's roster authorizes). Signed out → the admin login, then back. Only users with
+`collabPass` get a ticket (else 403): this CMS doesn't verify emails, so the pass can't be set from /admin
+or REST (a maintainer grants it in SQL, see `deploy/migration-round46.sql`) and changing the email clears it. Mints only for hosts
 in `COLLAB_PASS_HOSTS` (else 400); 503 until `COLLAB_PASS_SECRET` (≥ 32 chars, the collab Worker's
 `CMS_PASS_SECRET`) is set. The format is byte-compatible with the Field Guide CMS's copy and the template's
 verifier; `tests/int/collab-pass.int.spec.ts` pins both.

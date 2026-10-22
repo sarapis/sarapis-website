@@ -531,6 +531,10 @@ export interface Tag {
 export interface User {
   id: number;
   name?: string | null;
+  /**
+   * May sign in to collab sites (comms-strat…) as this email. Set by a maintainer only; cleared when the email changes.
+   */
+  collabPass?: boolean | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -1933,6 +1937,7 @@ export interface TagsSelect<T extends boolean = true> {
  */
 export interface UsersSelect<T extends boolean = true> {
   name?: T;
+  collabPass?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;

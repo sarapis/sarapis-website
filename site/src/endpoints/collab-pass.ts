@@ -11,8 +11,11 @@
  * Field Guide CMS (Civic-Tech-Field-Guide/ctfg-website payload/src/collab-pass.ts), which does
  * the same for ctfg-collab.sarapis.org; the two must stay byte-compatible.
  *
- * ⚠ IT PROVES AN EMAIL, NOTHING ELSE. Any signed-in user of this CMS gets a ticket; the collab
- * site's own roster decides whether that email may do anything there. No role is read here.
+ * ⚠ IT ASSERTS AN EMAIL, NOTHING ELSE, and only for users with `collabPass` (403 otherwise). The
+ * collab site's own roster decides whether that email may do anything there. This CMS does not
+ * verify emails, and any signed-in user can create a user with any email, so without the pass
+ * any editor could sign in to a collab site as anyone on its roster. Only a maintainer can set
+ * the pass, and changing the email clears it (collections/Users; tests/int/users-collab-pass).
  *
  * ⚠ ONLY TO LISTED HOSTS. A ticket carries an email, so minting one for any `host` asked would
  * hand every signed-in user's address to whoever links them here. COLLAB_PASS_HOSTS
@@ -103,7 +106,10 @@ export const collabPassStartEndpoint: Endpoint = {
         headers: { Location: `${admin}/login?redirect=${encodeURIComponent(self)}`, 'Cache-Control': 'no-store' },
       })
     }
-    const email = (req.user as { email?: string }).email
+    const { email, collabPass } = req.user as { email?: string; collabPass?: boolean | null }
+    if (collabPass !== true) {
+      return page(403, 'Not allowed', 'Your account here is not set up to sign in to other sites. Ask a Sarapis maintainer.')
+    }
     const to = collabRedirect({ host, state, email })
     if (!to) {
       return page(400, 'Could not sign you in', 'The request was not complete. Start again from the site you were signing in to.')
