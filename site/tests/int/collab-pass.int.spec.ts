@@ -76,7 +76,7 @@ describe('GET /api/collab-pass/start', () => {
   })
 
   const state = 'x'.repeat(24)
-  const call = (host: string, user?: { email: string }) =>
+  const call = (host: string, user?: { email: string; collabPass?: boolean }) =>
     collabPassStartEndpoint.handler({
       url: `https://next.sarapis.org/api/collab-pass/start?host=${host}&state=${state}`,
       user,
@@ -84,11 +84,21 @@ describe('GET /api/collab-pass/start', () => {
     } as never) as Promise<Response>
 
   it('sends a signed-in user back to the collab site with a ticket its verifier accepts', async () => {
-    const res = await call('comms-strat.sarapis.org', { email: 'someone@sarapis.org' })
+    const res = await call('comms-strat.sarapis.org', { email: 'someone@sarapis.org', collabPass: true })
     expect(res.status).toBe(302)
     const to = res.headers.get('Location')!
     expect(to.startsWith('https://comms-strat.sarapis.org/auth/cms/callback?ticket=v1.')).toBe(true)
     expect(await verifyTicket(ticketOf(to), S, { host: 'comms-strat.sarapis.org', state })).toMatchObject({ email: 'someone@sarapis.org' })
+  })
+
+  // Any CMS user can create an account with any email, so a ticket for a user without
+  // the maintainer-set pass would let them sign in to a collab site as someone else.
+  it('refuses a signed-in user without collabPass with 403, and no ticket', async () => {
+    for (const user of [{ email: 'someone@sarapis.org' }, { email: 'someone@sarapis.org', collabPass: false }]) {
+      const res = await call('comms-strat.sarapis.org', user)
+      expect(res.status).toBe(403)
+      expect(res.headers.get('Location')).toBeNull()
+    }
   })
 
   it('sends a signed-out user to the admin login, then back here', async () => {
