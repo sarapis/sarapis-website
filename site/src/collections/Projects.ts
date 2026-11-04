@@ -92,6 +92,26 @@ export const Projects: CollectionConfig = {
       admin: { description: 'Public site URL (shown as the ↗ project-home link), e.g. databook.nyc.' },
     },
     {
+      name: 'logo',
+      type: 'upload',
+      relationTo: 'media',
+      label: 'Logo',
+      admin: {
+        description:
+          'The project’s logo, shown large on its card (home and All Projects) and in the small tile at the top of its own page. A transparent PNG or SVG on a plain background works best; a wide wordmark is fine. Leave empty to use the logo found on the project’s website automatically (or the project’s initials if it has none).',
+      },
+    },
+    {
+      name: 'screenshot',
+      type: 'upload',
+      relationTo: 'media',
+      label: 'Screenshot of the software',
+      admin: {
+        description:
+          'A screenshot of the software, shown in the image box at the top right of the project’s own page. Landscape (about 16:10) at 1600px wide or more looks best; it is shown whole, not cropped. Leave empty and the box stays an empty placeholder.',
+      },
+    },
+    {
       name: 'parent',
       type: 'relationship',
       relationTo: 'projects',

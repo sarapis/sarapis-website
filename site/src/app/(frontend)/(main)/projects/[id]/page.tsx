@@ -10,7 +10,7 @@ import { GitHubIcon } from '../../../RdIcons'
 import { CardImg } from '../../../CardImg'
 import { cardFor, loadProjectMeta, projectEventsWhere, type ProjectMeta } from '../../../rdData'
 import { cachedQuery } from '@/utilities/cachedQuery'
-import { EVENT_COLOR, childLabel, ago, fmtDay, fmtFull, monogram, repoOrg, siteHref, siteLabel } from '../../../rd'
+import { EVENT_COLOR, childLabel, ago, mediaUrl, fmtDay, fmtFull, monogram, repoOrg, siteHref, siteLabel } from '../../../rd'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,7 +70,7 @@ export default async function ProjectPage({
     const ownRepos = await payload.find({ collection: 'repos', where: { published: { equals: true }, ...projWhere }, limit: 1000, depth: 0, pagination: false })
     const eventsWhere = projectEventsWhere(pid, (ownRepos.docs as any[]).map((r) => r.fullName))
     const [children, pinKnow, pinEvents, pinTasks, actRes, knowRes, repoRes] = await Promise.all([
-      payload.find({ collection: 'projects', where: { published: { equals: true }, parent: { equals: pid } }, sort: 'name', limit: 50, depth: 0 }),
+      payload.find({ collection: 'projects', where: { published: { equals: true }, parent: { equals: pid } }, sort: 'name', limit: 50, depth: 1 }),
       payload.find({ collection: 'knowledge-items', where: { published: { equals: true }, pinned: { equals: true }, ...projWhere }, sort: '-date', limit: 50, depth: 0 }),
       payload.find({ collection: 'activity-events', where: { and: [eventsWhere, { pinned: { equals: true } }] }, sort: '-occurredAt', limit: 50, depth: 0 }),
       payload.find({ collection: 'tasks', where: { publishToActivity: { equals: true }, pinned: { equals: true }, ...projWhere }, sort: '-updatedAt', limit: 50, depth: 0 }),
@@ -139,7 +139,8 @@ export default async function ProjectPage({
   const parent = project.parent && typeof project.parent === 'object' && project.parent.published === true ? project.parent : null
   const lastEvent = meta.latest.get(pid) || [...kids.map((k) => meta.latest.get(k.id))].filter(Boolean).sort((a: any, b: any) => String(b.occurredAt).localeCompare(String(a.occurredAt)))[0]
   const org = repoOrg([...(meta.repos.get(pid) || []), ...kids.flatMap((k) => meta.repos.get(k.id) || [])][0]?.fullName)
-  const shot = self.img
+  // the image box shows an uploaded screenshot of the software; the tile shows the project's logo
+  const shot = mediaUrl(project.screenshot)
   const focus = project.focusArea ? String(project.focusArea).replace(/-/g, ' ') : null
   const mono = monogram(project.name)
 
@@ -164,7 +165,7 @@ export default async function ProjectPage({
         <div className="rd-phead__grid">
           <div className="rd-phead__left">
             <div className="rd-phead__ident">
-              <Mono text={mono} size={56} site={project.site} />
+              <Mono text={mono} size={56} site={project.site} logo={self.logo} />
               <span className={`sds-badge sds-badge--${statusBadge[project.status] || 'declared'}`}>
                 {project.status === 'active' && <span className="dot" />}
                 {project.status}
@@ -226,7 +227,8 @@ export default async function ProjectPage({
 
           <div className="rd-glass rd-rise rd-phead__frame">
             <div className="rd-phead__shot">
-              <Thumb name={project.name} label={mono} site={project.site} />
+              {/* empty placeholder underneath: an unset or broken screenshot just shows it */}
+              <Thumb name={project.name} />
               {shot && <CardImg src={shot} />}
             </div>
           </div>

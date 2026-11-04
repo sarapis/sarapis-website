@@ -75,6 +75,15 @@ export const Homepage: GlobalConfig = {
         { name: 'role', type: 'text', admin: { width: '50%', description: 'e.g. Principal, Director. Leave blank for plain members.' } },
         { name: 'bio', type: 'textarea' },
         { name: 'link', type: 'text', admin: { description: 'Optional personal/work URL.' } },
+        {
+          name: 'portrait',
+          type: 'upload',
+          relationTo: 'media',
+          admin: {
+            description:
+              'Photo shown on this person’s card on /about. Portrait orientation (about 3:4), 600px wide or more looks best; it is cropped to fill the card. Leave empty to use the photo already on the site for this person, or an empty card if there is none.',
+          },
+        },
       ],
     },
     {
