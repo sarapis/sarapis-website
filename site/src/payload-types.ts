@@ -1227,6 +1227,22 @@ export interface CampaignEndorsement {
   contactName?: string | null;
   campaign?: string | null;
   /**
+   * Did the signer agree to be shown publicly (organizations: name AND logo)? Unchecked by the signer = counted but not named on the public wall. Empty on entries from before this question existed (shown).
+   */
+  displayPublicly?: boolean | null;
+  /**
+   * Optional message of support. PUBLIC once the entry is published — read it before approving.
+   */
+  quote?: string | null;
+  /**
+   * Logo link the organization submitted (organizations). PRIVATE — use it to upload the file below.
+   */
+  logoUrl?: string | null;
+  /**
+   * The logo shown on the endorser wall (organizations). Upload from the submitted link, only if they agreed to be shown publicly.
+   */
+  logo?: (number | null) | Media;
+  /**
    * Relevant activity in support of the Principles (organizations). PRIVATE — publish only if activityConsent is set.
    */
   activity?: string | null;
@@ -2124,6 +2140,10 @@ export interface CampaignEndorsementsSelect<T extends boolean = true> {
   website?: T;
   contactName?: T;
   campaign?: T;
+  displayPublicly?: T;
+  quote?: T;
+  logoUrl?: T;
+  logo?: T;
   activity?: T;
   activityConsent?: T;
   source?: T;

@@ -91,8 +91,104 @@ describe('campaign-endorsements access', () => {
     expect(res.totalDocs).toBe(1)
     const pub = res.docs[0] as unknown as Record<string, unknown>
     expect(pub.name).toBe('Public Org')
-    for (const field of ['email', 'contactName', 'activity', 'activityConsent', 'source', 'wantsUpdates']) {
+    for (const field of ['email', 'contactName', 'activity', 'activityConsent', 'source', 'wantsUpdates', 'logoUrl']) {
       expect(pub, `anonymous read leaked "${field}"`).not.toHaveProperty(field)
     }
+  })
+
+  /* ospo.opensource.nyc asks every signer whether they may be shown publicly.
+     A "no" must keep them counted but nameless; a "yes" (and older entries,
+     which never answered) must be shown as before. */
+  it('counts but does not name a signer who declined public display', async () => {
+    const doc = await payload.create({
+      collection: 'campaign-endorsements',
+      data: {
+        name: 'Private Signer',
+        email: 'quiet@example.invalid',
+        kind: 'individual',
+        title: 'Hidden Title',
+        organization: 'Hidden Org',
+        quote: 'Hidden quote',
+        campaign: 'test-display',
+        displayPublicly: false,
+        published: true,
+      },
+      overrideAccess: true,
+    })
+    created.push(doc.id)
+
+    const res = await payload.find({
+      collection: 'campaign-endorsements',
+      where: { campaign: { equals: 'test-display' } },
+      overrideAccess: false,
+    })
+    expect(res.totalDocs).toBe(1)
+    const pub = res.docs[0] as unknown as Record<string, unknown>
+    expect(pub.kind).toBe('individual')
+    for (const field of ['name', 'title', 'organization', 'website', 'quote', 'logo']) {
+      expect(pub, `hidden signer's "${field}" was readable`).not.toHaveProperty(field)
+    }
+
+    // ...and cannot be found by name either.
+    await expect(
+      payload.find({
+        collection: 'campaign-endorsements',
+        where: { name: { equals: 'Private Signer' } },
+        overrideAccess: false,
+      }),
+    ).rejects.toThrow()
+
+    // An admin still sees everything.
+    const admin = await payload.findByID({ collection: 'campaign-endorsements', id: doc.id, overrideAccess: true })
+    expect(admin.name).toBe('Private Signer')
+  })
+
+  it('shows the name and quote of a signer who agreed, and of older entries that never answered', async () => {
+    for (const displayPublicly of [true, undefined]) {
+      const doc = await payload.create({
+        collection: 'campaign-endorsements',
+        data: {
+          name: `Shown ${displayPublicly}`,
+          email: 'shown@example.invalid',
+          kind: 'individual',
+          quote: 'Open source keeps it public.',
+          campaign: `test-shown-${displayPublicly}`,
+          ...(displayPublicly === undefined ? {} : { displayPublicly }),
+          published: true,
+        },
+        overrideAccess: true,
+      })
+      created.push(doc.id)
+
+      const res = await payload.find({
+        collection: 'campaign-endorsements',
+        where: { campaign: { equals: `test-shown-${displayPublicly}` } },
+        overrideAccess: false,
+      })
+      const pub = res.docs[0] as unknown as Record<string, unknown>
+      expect(pub.name).toBe(`Shown ${displayPublicly}`)
+      expect(pub.quote).toBe('Open source keeps it public.')
+    }
+  })
+
+  it('ignores a `logo` on an anonymous create', async () => {
+    const media = await payload.find({ collection: 'media', limit: 1, overrideAccess: true })
+    const doc = await payload.create({
+      collection: 'campaign-endorsements',
+      data: {
+        name: 'Logo Org',
+        email: 'logo@example.invalid',
+        kind: 'organization',
+        logoUrl: 'https://example.invalid/logo.svg',
+        // Any id: an existing one when the DB has media, else a made-up one.
+        logo: (media.docs[0]?.id as number | undefined) ?? 1,
+      },
+      overrideAccess: false,
+    })
+    created.push(doc.id)
+
+    const stored = await payload.findByID({ collection: 'campaign-endorsements', id: doc.id, depth: 0, overrideAccess: true })
+    expect(stored.logo ?? null).toBeNull()
+    expect(stored.logoUrl).toBe('https://example.invalid/logo.svg')
   })
 })
