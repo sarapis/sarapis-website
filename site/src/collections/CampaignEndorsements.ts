@@ -10,7 +10,7 @@ import { siteField } from '../fields/siteField'
 /**
  * CampaignEndorsements — signatures for a campaign, as an individual or an
  * organization (WeGov's "The World is Going Open Source" endorsers, and the
- * ospo.opensource.nyc endorsements, `campaign: 'ospo-nyc'`). Slug matches
+ * ospo.opensource.nyc endorsements, `campaign: 'nyc-ospo'`). Slug matches
  * Strapi's `campaign-endorsements` so the front-end only swaps the API host.
  * Anonymous create; PUBLIC read of `published` docs only; manage admin-only.
  * Private fields (email, contactName, source, wantsUpdates) are withheld from
