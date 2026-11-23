@@ -3,12 +3,15 @@ import type { CollectionConfig } from 'payload'
 import { anyone } from '../access/anyone'
 import { authenticated } from '../access/authenticated'
 import { authenticatedField } from '../access/authenticatedField'
+import { publicUnlessHidden } from '../access/publicUnlessHidden'
 import { publishedOnly } from '../access/publishedOnly'
 import { siteField } from '../fields/siteField'
+import { notifyNewEndorsement } from '../hooks/notifyNewEndorsement'
 
 /**
  * CampaignEndorsements — signatures for a campaign, as an individual or an
- * organization (WeGov's "The World is Going Open Source" endorsers). Slug matches
+ * organization (WeGov's "The World is Going Open Source" endorsers, and the
+ * ospo.opensource.nyc endorsements, `campaign: 'nyc-ospo'`). Slug matches
  * Strapi's `campaign-endorsements` so the front-end only swaps the API host.
  * Anonymous create; PUBLIC read of `published` docs only; manage admin-only.
  * Private fields (email, contactName, source, wantsUpdates) are withheld from
@@ -30,9 +33,11 @@ export const CampaignEndorsements: CollectionConfig = {
   admin: {
     useAsTitle: 'name',
     group: 'Submissions',
-    defaultColumns: ['name', 'kind', 'published', 'organization', 'campaign', 'createdAt'],
+    defaultColumns: ['name', 'kind', 'published', 'displayPublicly', 'organization', 'campaign', 'createdAt'],
   },
   hooks: {
+    // An email per new endorsement, once configured (see the hook).
+    afterChange: [notifyNewEndorsement],
     beforeValidate: [
       ({ data }) => {
         if (data?.fax) throw new Error('Invalid submission')
@@ -51,7 +56,7 @@ export const CampaignEndorsements: CollectionConfig = {
         { label: 'Organization', value: 'organization' },
       ],
     },
-    { name: 'name', type: 'text', required: true, admin: { description: 'Person name, or organization name when kind=organization.' } },
+    { name: 'name', type: 'text', required: true, access: { read: publicUnlessHidden }, admin: { description: 'Person name, or organization name when kind=organization.' } },
     /* ⚠ FIELD-LEVEL ACCESS. Introduced here because collection read is now
        public: without it, `GET /api/campaign-endorsements` would hand every
        signer's email address to anyone who asked. Payload omits these fields
@@ -59,11 +64,51 @@ export const CampaignEndorsements: CollectionConfig = {
        name, website, title and organization, so none of this is missed.
        Keep this list in step with anything genuinely private. */
     { name: 'email', type: 'email', required: true, access: { read: authenticatedField } },
-    { name: 'title', type: 'text', admin: { description: 'Job title (individuals).' } },
-    { name: 'organization', type: 'text', admin: { description: 'Affiliation (individuals).' } },
-    { name: 'website', type: 'text', admin: { description: 'Organization website (organizations).' } },
+    { name: 'title', type: 'text', access: { read: publicUnlessHidden }, admin: { description: 'Job title (individuals).' } },
+    { name: 'organization', type: 'text', access: { read: publicUnlessHidden }, admin: { description: 'Affiliation (individuals).' } },
+    { name: 'website', type: 'text', access: { read: publicUnlessHidden }, admin: { description: 'Organization website (organizations).' } },
     { name: 'contactName', type: 'text', access: { read: authenticatedField }, admin: { description: 'Contact person (organizations). PRIVATE — the org name is public, its staff are not.' } },
     { name: 'campaign', type: 'text' },
+    /* PUBLIC DISPLAY CONSENT, asked on every new form (ospo.opensource.nyc):
+       an individual's "show my name publicly", an organization's "you may show
+       our name and logo". Only an explicit `false` hides: the identifying
+       fields (name, title, organization, website, quote, logo) are then
+       withheld from anonymous reads by `publicUnlessHidden`, while the entry
+       still counts. No default on purpose — older entries hold NULL and stay
+       visible, as they were when submitted. */
+    {
+      name: 'displayPublicly',
+      type: 'checkbox',
+      admin: { description: 'Did the signer agree to be shown publicly (organizations: name AND logo)? Unchecked by the signer = counted but not named on the public wall. Empty on entries from before this question existed (shown).' },
+    },
+    /* A personal message of support, shown beside the name (OSI-style
+       "statements of support"). Published with the entry, so the approver
+       reads it before ticking `published`. */
+    {
+      name: 'quote',
+      type: 'textarea',
+      maxLength: 600,
+      access: { read: publicUnlessHidden },
+      admin: { description: 'Optional message of support. PUBLIC once the entry is published — read it before approving.' },
+    },
+    /* Organizations' logos. The public cannot upload to Media, so the form
+       sends a LINK (`logoUrl`, private); the approver downloads it, uploads it
+       to Media and attaches it here. Anonymous create may not set `logo`, or a
+       submitter could attach any existing media file to their entry. */
+    {
+      name: 'logoUrl',
+      type: 'text',
+      maxLength: 500,
+      access: { read: authenticatedField },
+      admin: { description: 'Logo link the organization submitted (organizations). PRIVATE — use it to upload the file below.' },
+    },
+    {
+      name: 'logo',
+      type: 'upload',
+      relationTo: 'media',
+      access: { create: authenticatedField, read: publicUnlessHidden },
+      admin: { description: 'The logo shown on the endorser wall (organizations). Upload from the submitted link, only if they agreed to be shown publicly.' },
+    },
     /* Formal ORGANIZATION endorsements carry a description of what the org is
        already doing, plus a per-submission consent flag governing whether that
        description may be published. Both are withheld from anonymous reads:

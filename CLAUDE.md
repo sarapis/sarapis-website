@@ -57,6 +57,17 @@ filter, not an FK.
   is a gate.** `campaign-endorsements.published` had none, so one POST with
   `"published": true` approved itself onto the public wall. `tests/int/campaign-endorsements.int.spec.ts`
   now pins this; add the same test for any new public-create collection.
+- **Per-entry public display** (`src/access/publicUnlessHidden.ts`): `campaign-endorsements` asks each signer
+  `displayPublicly`. An explicit `false` withholds name, title, organization, website, quote and logo from
+  anonymous reads while the entry still counts; NULL (older entries) stays visible. It is a field rule that reads
+  the document, and answers false when there is none, so anonymous `where` filters on those fields are refused
+  (otherwise `?where[name][equals]=` would find a hidden signer). Pinned in `campaign-endorsements.int.spec.ts`.
+- **New-endorsement email** (`src/hooks/notifyNewEndorsement.ts`): an `afterChange` hook on
+  `campaign-endorsements` emails `ENDORSEMENT_NOTIFY_TO` through Resend's HTTP API (no email adapter is
+  configured; it uses fetch) on create only, never on approval. Off unless `RESEND_API_KEY`,
+  `ENDORSEMENT_NOTIFY_FROM` and `ENDORSEMENT_NOTIFY_TO` are all set. Its `doc` has already lost the
+  private fields to read access, so it reads them from the submitted `data`. A send failure is logged,
+  never thrown. Pinned in `tests/int/endorsement-notify.int.spec.ts`.
 - ⚠ `required` + `admin.readOnly` on the same field makes a collection **impossible to create
   from the admin UI**. For "settable on create, frozen after", use
   `access: { update: () => false }` (see `Repos.fullName`).

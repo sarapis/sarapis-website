@@ -10,7 +10,8 @@ import { siteKey } from './rd'
 /**
  * Shared plumbing for the routes that fetch a project site's own assets
  * (/next/logo, /next/wordmark): a hardened server-side fetch, and the allowlist
- * of sites they may fetch — exactly the published projects' `site` values — so
+ * of sites they may fetch — the published projects' `site` values, and the
+ * websites of approved organization endorsements that agreed to be shown — so
  * they are never an open proxy.
  */
 
@@ -172,8 +173,10 @@ const ALLOWED_TTL_MS = 60_000
 let allowedCache: { at: number; value: Promise<{ hosts: Set<string>; keys: Set<string> }> } | null = null
 
 /**
- * Hosts, and normalised host/path keys, of the published projects' sites — the only ones
- * the asset routes may fetch. Memoised for a minute, so a stream of requests for unlisted
+ * Hosts, and normalised host/path keys, of the published projects' sites and of the
+ * websites of published, shown organization endorsements — the only ones the asset
+ * routes may fetch. (ospo.opensource.nyc shows an endorsing organization's logo from
+ * /next/logo when no logo was attached on approval.) Memoised for a minute, so a stream of requests for unlisted
  * sites costs one query a minute rather than one each.
  */
 export function allowedSites(): Promise<{ hosts: Set<string>; keys: Set<string> }> {
@@ -184,15 +187,35 @@ export function allowedSites(): Promise<{ hosts: Set<string>; keys: Set<string> 
   return value
 }
 
-async function loadAllowedSites(): Promise<{ hosts: Set<string>; keys: Set<string> }> {
+/** Exported for tests; callers use the memoised allowedSites(). */
+export async function loadAllowedSites(): Promise<{ hosts: Set<string>; keys: Set<string> }> {
   const payload = await getPayload({ config: configPromise })
-  const res = await payload.find({ collection: 'projects', where: { published: { equals: true } }, limit: 500, depth: 0, pagination: false })
+  const [projects, endorsers] = await Promise.all([
+    payload.find({ collection: 'projects', where: { published: { equals: true } }, limit: 500, depth: 0, pagination: false }),
+    // Approved organizations with a website, unless they declined public display
+    // (`displayPublicly: false`; NULL, on entries from before the question, is shown).
+    payload.find({
+      collection: 'campaign-endorsements',
+      where: {
+        and: [
+          { published: { equals: true } },
+          { kind: { equals: 'organization' } },
+          { website: { exists: true } },
+          { or: [{ displayPublicly: { equals: true } }, { displayPublicly: { exists: false } }] },
+        ],
+      },
+      limit: 2000,
+      depth: 0,
+      pagination: false,
+    }),
+  ])
   const hosts = new Set<string>()
   const keys = new Set<string>()
-  for (const p of res.docs as any[]) {
-    if (!p.site) continue
-    const h = hostOfSite(p.site)
-    const k = siteKey(p.site)
+  const sites = [...(projects.docs as any[]).map((p) => p.site), ...(endorsers.docs as any[]).map((e) => e.website)]
+  for (const site of sites) {
+    if (!site) continue
+    const h = hostOfSite(site)
+    const k = siteKey(site)
     if (h) hosts.add(h)
     if (k) keys.add(k)
   }
