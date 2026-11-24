@@ -3,6 +3,7 @@ import type { CollectionConfig } from 'payload'
 import { anyone } from '../access/anyone'
 import { authenticated } from '../access/authenticated'
 import { siteField } from '../fields/siteField'
+import { campaignSignupEmails } from '../hooks/campaignEmails'
 
 /**
  * CampaignSignups — email capture from campaign forms (WeGov's "Get Updates").
@@ -20,6 +21,9 @@ export const CampaignSignups: CollectionConfig = {
     defaultColumns: ['email', 'campaign', 'site', 'createdAt'],
   },
   hooks: {
+    // For a campaign that sends email: onto its Resend list, and a welcome
+    // (src/lib/campaignEmail.ts).
+    afterChange: [campaignSignupEmails],
     beforeValidate: [
       ({ data }) => {
         if (data?.website) throw new Error('Invalid submission')
