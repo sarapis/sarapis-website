@@ -21,6 +21,8 @@ import type { Payload } from 'payload'
  *   CAMPAIGN_EMAIL_<KEY>_SEGMENT_ID  Resend segment (the list) for opted-in people
  *   CAMPAIGN_EMAIL_<KEY>_TOPIC_ID    Resend topic, so a broadcast's unsubscribe
  *                                    leaves this campaign only
+ *   CAMPAIGN_EMAIL_<KEY>_USE_TEMPLATES  1 to send with the Resend templates named
+ *                                    in MESSAGES (falls back to the built-in words)
  *
  * Who gets what (the forms' promises: the endorse form says the email is used
  * "only to contact you about your endorsement and, if you ask, to send updates"):
@@ -38,7 +40,15 @@ import type { Payload } from 'payload'
 
 const API = 'https://api.resend.com'
 
-type Message = { subject: string; text: string }
+/**
+ * An email's built-in words, and optionally the Resend template that replaces
+ * them: its alias and the values for its {{{VARIABLES}}}. Templates are edited
+ * and published in Resend's dashboard (Templates), so the words change without
+ * a deploy. They are used only while CAMPAIGN_EMAIL_<KEY>_USE_TEMPLATES is set;
+ * if Resend refuses a template (missing, unpublished, a bad variable), the
+ * built-in subject and text go instead, so nobody misses the email.
+ */
+type Message = { subject: string; text: string; template?: { alias: string; variables: Record<string, string> } }
 
 export type CampaignConfig = {
   campaign: string
@@ -47,6 +57,7 @@ export type CampaignConfig = {
   replyTo?: string[]
   segmentId?: string
   topicId?: string
+  useTemplates: boolean
   messages: CampaignMessages
 }
 
@@ -81,6 +92,7 @@ export function campaignConfig(campaign: unknown): CampaignConfig | null {
     replyTo: replyTo?.length ? replyTo : undefined,
     segmentId: env('SEGMENT_ID'),
     topicId: env('TOPIC_ID'),
+    useTemplates: ['1', 'true', 'yes', 'on'].includes((env('USE_TEMPLATES') ?? '').toLowerCase()),
     messages,
   }
 }
@@ -133,7 +145,16 @@ export async function addToList(payload: Payload, cfg: CampaignConfig, email: st
   if (topics) await resend(payload, `topic ${cfg.campaign}`, `/contacts/${who}/topics`, 'PATCH', topics)
 }
 
-/** One email to one person. `idempotencyKey` stops a retried hook sending twice. */
+/** HTML-escapes a value going into a template: names come from public forms. */
+export function escapeHtml(v: string): string {
+  return v.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
+}
+
+/**
+ * One email to one person: the Resend template when it's switched on, else (or
+ * if Resend refuses it) the built-in words. `idempotencyKey` stops a retried
+ * hook sending twice.
+ */
 export async function sendCampaignEmail(
   payload: Payload,
   cfg: CampaignConfig,
@@ -142,22 +163,36 @@ export async function sendCampaignEmail(
   idempotencyKey: string,
 ): Promise<void> {
   const unsubscribe = cfg.replyTo?.[0]
+  const common = {
+    from: cfg.from,
+    to: [to],
+    ...(cfg.replyTo ? { reply_to: cfg.replyTo } : {}),
+    ...(unsubscribe ? { headers: { 'List-Unsubscribe': `<mailto:${unsubscribe}?subject=unsubscribe>` } } : {}),
+    tags: [{ name: 'campaign', value: cfg.key.toLowerCase() }],
+  }
+
+  if (cfg.useTemplates && message.template) {
+    const variables = Object.fromEntries(
+      Object.entries(message.template.variables).map(([k, v]) => [k, escapeHtml(v)]),
+    )
+    const res = await resend(
+      payload,
+      `template ${message.template.alias}`,
+      '/emails',
+      'POST',
+      { ...common, template: { id: message.template.alias, variables } },
+      { 'Idempotency-Key': `${idempotencyKey}-tpl`.slice(0, 256) },
+    )
+    if (res?.ok) return
+    payload.logger.warn(`Campaign email: template ${message.template.alias} refused; sending the built-in words instead.`)
+  }
+
   await resend(
     payload,
     `"${message.subject}"`,
     '/emails',
     'POST',
-    {
-      from: cfg.from,
-      to: [to],
-      subject: message.subject,
-      text: message.text,
-      ...(cfg.replyTo ? { reply_to: cfg.replyTo } : {}),
-      ...(unsubscribe
-        ? { headers: { 'List-Unsubscribe': `<mailto:${unsubscribe}?subject=unsubscribe>` } }
-        : {}),
-      tags: [{ name: 'campaign', value: cfg.key.toLowerCase() }],
-    },
+    { ...common, subject: message.subject, text: message.text },
     { 'Idempotency-Key': idempotencyKey.slice(0, 256) },
   )
 }
@@ -169,9 +204,11 @@ export function firstName(e: Endorsement): string | null {
   return first || null
 }
 
-// ---- Words ---------------------------------------------------------------
+// ---- Words (the built-in versions; with USE_TEMPLATES on, the Resend
+// templates named here are sent instead, and these are the fallback) --------
 // One entry per campaign that sends email. Plain text: these read as notes
-// from the team, not newsletters. Change the words here and redeploy.
+// from the team, not newsletters. To change what people get, edit the
+// templates in Resend; change these only for the fallback (needs a deploy).
 
 const OSPO = 'https://ospo.opensource.nyc'
 const OSPO_SIGNOFF = ['', 'The NYC OSPO campaign team at Sarapis', OSPO]
@@ -180,6 +217,7 @@ const OSPO_FOOTER = (why: string) => ['', '—', why, 'To stop these emails, rep
 const MESSAGES: Record<string, CampaignMessages> = {
   'nyc-ospo': {
     welcome: () => ({
+      template: { alias: 'nyc-ospo-welcome', variables: {} },
       subject: 'Thanks for following the campaign for an NYC OSPO',
       text: [
         'Thanks for signing up for updates on the campaign for an Open Source Program Office for New York City.',
@@ -200,6 +238,20 @@ const MESSAGES: Record<string, CampaignMessages> = {
       const hi = firstName(e)
       const onBehalf = e.kind === 'organization' && e.name ? ` on behalf of ${e.name}` : ''
       return {
+        template: {
+          alias: 'nyc-ospo-endorsement-thanks',
+          variables: {
+            GREETING_NAME: hi ?? 'there',
+            ON_BEHALF: onBehalf,
+            NAME_NOTE:
+              e.displayPublicly === false
+                ? ' You asked not to be listed by name, so your endorsement will be counted without your name.'
+                : '',
+            UPDATES_NOTE: e.wantsUpdates
+              ? ' You also asked for campaign updates, so we will write occasionally when there is news.'
+              : '',
+          },
+        },
         subject: 'Thank you for endorsing an NYC OSPO',
         text: [
           hi ? `Hi ${hi},` : 'Hello,',
@@ -228,6 +280,15 @@ const MESSAGES: Record<string, CampaignMessages> = {
       const hi = firstName(e)
       const shown = e.displayPublicly !== false
       return {
+        template: {
+          alias: 'nyc-ospo-endorsement-live',
+          variables: {
+            GREETING_NAME: hi ?? 'there',
+            LIVE_LINE: shown
+              ? `Your endorsement is now on the page: ${OSPO}/endorse#endorsers`
+              : 'Your endorsement has been approved. As you asked, it is counted without your name.',
+          },
+        },
         subject: 'Your endorsement of an NYC OSPO is live',
         text: [
           hi ? `Hi ${hi},` : 'Hello,',

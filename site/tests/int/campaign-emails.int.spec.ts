@@ -17,6 +17,7 @@ const ENV = [
   'CAMPAIGN_EMAIL_NYC_OSPO_REPLY_TO',
   'CAMPAIGN_EMAIL_NYC_OSPO_SEGMENT_ID',
   'CAMPAIGN_EMAIL_NYC_OSPO_TOPIC_ID',
+  'CAMPAIGN_EMAIL_NYC_OSPO_USE_TEMPLATES',
 ] as const
 
 type Call = [string, RequestInit]
@@ -187,6 +188,56 @@ describe('campaign emails', () => {
     const doc = await signup('failing@example.invalid')
     expect(doc.id).toBeTruthy()
     await settle()
+  })
+
+  it('with templates on: sends the Resend template, escaping form input; no subject or text', async () => {
+    configure()
+    process.env.CAMPAIGN_EMAIL_NYC_OSPO_USE_TEMPLATES = '1'
+    const fetchMock = stubFetch()
+    const doc = await payload.create({
+      collection: 'campaign-endorsements',
+      data: {
+        name: 'Acme <b>Civic</b>',
+        kind: 'organization',
+        contactName: 'Sam & Co',
+        email: 'tpl@example.invalid',
+        campaign: 'nyc-ospo',
+        displayPublicly: false,
+      },
+      overrideAccess: false,
+    })
+    created.push({ collection: 'campaign-endorsements', id: doc.id })
+    await vi.waitFor(() => expect(emails(fetchMock)).toHaveLength(1))
+    const [mail] = emails(fetchMock)
+    expect(mail.template.id).toBe('nyc-ospo-endorsement-thanks')
+    expect(mail.template.variables).toEqual({
+      GREETING_NAME: 'Sam',
+      ON_BEHALF: ' on behalf of Acme &lt;b&gt;Civic&lt;/b&gt;',
+      NAME_NOTE: ' You asked not to be listed by name, so your endorsement will be counted without your name.',
+      UPDATES_NOTE: '',
+    })
+    expect(mail.subject).toBeUndefined()
+    expect(mail.text).toBeUndefined()
+    expect(mail.reply_to).toEqual(['team@example.invalid'])
+    delete process.env.CAMPAIGN_EMAIL_NYC_OSPO_USE_TEMPLATES
+  })
+
+  it('with templates on: a refused template falls back to the built-in words', async () => {
+    configure()
+    process.env.CAMPAIGN_EMAIL_NYC_OSPO_USE_TEMPLATES = '1'
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) =>
+      String(init?.body ?? '').includes('"template"')
+        ? new Response('{"message":"template not published"}', { status: 422 })
+        : new Response('{"id":"x"}', { status: 200 }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    await signup('fallback@example.invalid')
+    await vi.waitFor(() => expect(emails(fetchMock)).toHaveLength(2))
+    const [tpl, text] = emails(fetchMock)
+    expect(tpl.template.id).toBe('nyc-ospo-welcome')
+    expect(text.subject).toBe('Thanks for following the campaign for an NYC OSPO')
+    expect(text.text).toContain('https://ospo.opensource.nyc/endorse')
+    delete process.env.CAMPAIGN_EMAIL_NYC_OSPO_USE_TEMPLATES
   })
 
   it('first names: the person, or the contact for an organization', () => {
