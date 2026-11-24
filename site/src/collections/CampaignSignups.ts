@@ -3,6 +3,7 @@ import type { CollectionConfig } from 'payload'
 import { anyone } from '../access/anyone'
 import { authenticated } from '../access/authenticated'
 import { siteField } from '../fields/siteField'
+import { sendCampaignConfirmation } from '../hooks/sendCampaignConfirmation'
 
 /**
  * CampaignSignups — email capture from campaign forms (WeGov's "Get Updates").
@@ -20,6 +21,8 @@ export const CampaignSignups: CollectionConfig = {
     defaultColumns: ['email', 'campaign', 'site', 'createdAt'],
   },
   hooks: {
+    // A confirmation to the new subscriber (off until configured; see the hook).
+    afterChange: [sendCampaignConfirmation('signup')],
     beforeValidate: [
       ({ data }) => {
         if (data?.website) throw new Error('Invalid submission')
