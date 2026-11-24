@@ -7,6 +7,7 @@ import { publicUnlessHidden } from '../access/publicUnlessHidden'
 import { publishedOnly } from '../access/publishedOnly'
 import { siteField } from '../fields/siteField'
 import { notifyNewEndorsement } from '../hooks/notifyNewEndorsement'
+import { sendCampaignConfirmation } from '../hooks/sendCampaignConfirmation'
 
 /**
  * CampaignEndorsements — signatures for a campaign, as an individual or an
@@ -37,7 +38,9 @@ export const CampaignEndorsements: CollectionConfig = {
   },
   hooks: {
     // An email per new endorsement, once configured (see the hook).
-    afterChange: [notifyNewEndorsement],
+    // An email per new endorsement to the approver, and a confirmation to the
+    // signer (both off until configured; see the hooks).
+    afterChange: [notifyNewEndorsement, sendCampaignConfirmation('endorsement')],
     beforeValidate: [
       ({ data }) => {
         if (data?.fax) throw new Error('Invalid submission')

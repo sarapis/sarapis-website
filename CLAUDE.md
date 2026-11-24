@@ -67,7 +67,16 @@ filter, not an FK.
   configured; it uses fetch) on create only, never on approval. Off unless `RESEND_API_KEY`,
   `ENDORSEMENT_NOTIFY_FROM` and `ENDORSEMENT_NOTIFY_TO` are all set. Its `doc` has already lost the
   private fields to read access, so it reads them from the submitted `data`. A send failure is logged,
-  never thrown. Pinned in `tests/int/endorsement-notify.int.spec.ts`.
+  never thrown. Pinned in `tests/int/endorsement-notify.int.spec.ts`. Resend calls go through
+  `src/lib/resend.ts`.
+- **Campaign confirmation emails** (`src/hooks/sendCampaignConfirmation.ts`, words in
+  `src/email/campaignConfirmations.ts`, one entry per campaign key): on create in `campaign-endorsements`
+  and `campaign-signups`, the visitor gets a confirmation. ⚠ The words are FIXED TEXT: never put a
+  submitted value (name, message) in them, or the public form becomes a way to send anyone's text in our
+  name. One email per address and campaign per collection (it counts earlier entries); sign-ups from a
+  `signupSkipSources` source (the endorse form's "send me updates") get none, as that visitor already gets
+  the endorsement email. Off unless `RESEND_API_KEY` and `CAMPAIGN_EMAIL_FROM` are set
+  (`CAMPAIGN_EMAIL_REPLY_TO` optional). Pinned in `tests/int/campaign-confirmation.int.spec.ts`.
 - ⚠ `required` + `admin.readOnly` on the same field makes a collection **impossible to create
   from the admin UI**. For "settable on create, frozen after", use
   `access: { update: () => false }` (see `Repos.fullName`).

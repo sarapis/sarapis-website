@@ -1,9 +1,10 @@
 import type { CollectionAfterChangeHook } from 'payload'
+import { sendResendEmail } from '../lib/resend'
 
 /**
  * Emails a note for each NEW campaign endorsement, so whoever approves them
- * knows one is waiting (nothing else tells them). Sent through Resend's HTTP
- * API with fetch: the CMS has no email adapter, and this needs no package.
+ * knows one is waiting (nothing else tells them). Sent through Resend
+ * (src/lib/resend.ts).
  *
  * Off until all three are set (it logs a line instead):
  *   RESEND_API_KEY              a Resend API key with send access
@@ -29,15 +30,7 @@ export const notifyNewEndorsement: CollectionAfterChangeHook = ({ data, doc, ope
   // the private fields (email, contactName, logoUrl, …) are already gone from
   // it. The submitted `data` still has them; `doc` wins where both do.
   const email = endorsementEmail({ ...data, ...doc })
-  void fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to, subject: email.subject, text: email.text }),
-  })
-    .then(async (res) => {
-      if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`)
-    })
-    .catch((err) => req.payload.logger.error(`Endorsement ${doc.id}: notification email failed: ${err}`))
+  sendResendEmail(key, { from, to, ...email }, req.payload.logger, `Endorsement ${doc.id} notification`)
 
   return doc
 }
